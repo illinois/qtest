@@ -1,4 +1,4 @@
-function [bayes2,bayes2_ext]=bayes_factor_2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate,epsilon,progress)
+function [bayes2,bayes2_ext]=bayes_factor_2_Dan_v2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate,epsilon,progress)
 %BAYES_FACTOR_2 computes the Bayes factor using the direct method
 %   BAYES2=bayes_factor_2(M,A,B,AEQ,BEQ,INEQ_IDX,N,RSTATE,EPSILON)
 %   
@@ -44,30 +44,78 @@ if nargin<10
     progress=[];
 end
 
-bayes2=[];
-%find valid starting point
-l_scale='on';
-max_iter=85;
-while 1
-    options_lin=optimset('LargeScale',l_scale,'Display','off','MaxIter',max_iter);
-    [valid,~,exitflag]=linprog(ones(1,size(A,2)),A,B,Aeq,Beq, ...
-        [],[],[],options_lin);
-    if exitflag==0
-        max_iter=max_iter*2;
-        continue;
-    end
-    if exitflag<0
-        if isequal(l_scale,'on') && isfield(optimset,'Simplex')
-            l_scale='off'; %rare case
-            max_iter=85;
-            continue;
-        end
-        %error('Cannot find a feasible point!');
-        return;
-    end
-    break;
+%bayes2=[];
+% %find valid starting point
+% l_scale='on';
+% max_iter=85;
+% while 1
+%     options_lin=optimset('LargeScale',l_scale,'Display','off','MaxIter',max_iter);
+%     [valid,~,exitflag]=linprog(ones(1,size(A,2)),A,B,Aeq,Beq, ...
+%         [],[],[],options_lin);
+%     if exitflag==0
+%         max_iter=max_iter*2;
+%         continue;
+%     end
+%     if exitflag<0
+%         if isequal(l_scale,'on') && isfield(optimset,'Simplex')
+%             l_scale='off'; %rare case
+%             max_iter=85;
+%             continue;
+%         end
+%         %error('Cannot find a feasible point!');
+%         return;
+%     end
+%     break;
+% end
+% x=valid';
+
+
+%% ADDED BY DAN TO GET A VALID STARTING POINT
+
+%%%%%%%%%%% THIS VERSION USES TEH MPT3 TOOLBOX %%%%%%%%%%%%
+% % display old starting point
+% disp(x)
+% %%%%%% use mpt to find an interior point of the polytope
+% % construct a polyhedron object from A, B, AEQ, BEQ
+% P = Polyhedron('A', A, 'b', B, 'Ae', Aeq, 'be', Beq);
+% int = P.interiorPoint;
+% x = int.x;
+% x = x';
+% disp(x)
+
+%%%%%%%%% THIS VERSION DOES THE SAME THING WITHOUT THE MPT3 TOOLBOX
+% Compute Chebyshev center from facet description by solving linear program
+% minimize r such that aix + ||ai||r < bi 
+%add last column for r variable, which is the L2 norm of each row of A
+lastcol=zeros(size(A,1),1);
+for iii=1:size(A,1)
+    lastcol(iii,1)=norm(A(iii,:));
 end
-x=valid';
+Ar=horzcat(A,lastcol);
+%add last row to Ar for r>0 constraint
+Ar2=vertcat(Ar,[zeros(1,size(A,2)),-1]);
+%add last row to B for r>0 constraint
+Br2=vertcat(B,0);
+%if Aeq is empty then leave it alone, otherwise add column of zeros for the
+%r variable
+if isempty(Aeq)==0
+    Aeqr=horzcat(Aeq,zeros(size(Aeq,1),1));
+end
+% maximize r by minimizing -r
+f=horzcat(zeros(1,size(A,2)),-1);
+
+if isempty(Aeq)==0
+    xr = linprog(f,Ar2,Br2,Aeqr,Beq);
+    else
+    xr = linprog(f,Ar2,Br2,Aeq,Beq);
+end
+%x=linprog(f,Ar2,Br2,Aeq,Beq);
+
+x = xr(1:size(A,2));
+%r = xr(size(A,2)+1);
+x = x';
+%%
+
 num_dim=length(x);
 
 if size(ineq_idx,1)>1
@@ -108,6 +156,10 @@ CHUNK_SIZE=1000; %1e6;
 n_chunks=max(1,floor(N_actual/CHUNK_SIZE));
 bayes2 = 0;
 bayes2_ext=zeros(n_chunks,3);
+
+%% Marginal likelihood of null model (denominator in the Bayes factor) only depends on the data, not the particular sample, so we precompute it
+logdenom=sum(betaln(m(:,1)+1,m(:,2)+1));
+
 for iter=1:n_chunks
     if iter==n_chunks
         N=N_actual-(iter-1)*CHUNK_SIZE;
@@ -137,12 +189,18 @@ for iter=1:n_chunks
         prior_sample(i,:)=x;
     end
     prior_sample=max(min(prior_sample,1-epsilon),epsilon);
-    bayes2 = bayes2 + ...
-        sum(prod(prior_sample.^(ones(N,1)*(m(:,1)')),2).* ...
-        prod((1-prior_sample).^(ones(N,1)*(m(:,2)')),2));
+
+    %% Revised Bayes factor calculation.  Normalize by marginal likelihood of the null model in each sample, instead of waiting until the end.  We precomputed it and called it logdenom.
+%      bayes2 = bayes2 + ...
+%          sum(prod(prior_sample.^(ones(N,1)*(m(:,1)')),2).* ...
+%          prod((1-prior_sample).^(ones(N,1)*(m(:,2)')),2));
+    bayes2=bayes2+sum( exp(sum(  (ones(N,1)*(m(:,1)')).*log(prior_sample) + (ones(N,1)*(m(:,2)')).*log(1-prior_sample) ,2) - logdenom )); 
+    %%
     
     n_done=(iter-1)*CHUNK_SIZE+N;
-    cur_bayes2 =  exp(log(bayes2/n_done)-sum(betaln(m(:,1)+1,m(:,2)+1)));
+    %% No need to divide by likelihood of null model because it was already done in each sample.
+    %cur_bayes2 =  exp(log(bayes2/n_done)-sum(betaln(m(:,1)+1,m(:,2)+1)));
+    cur_bayes2 =  bayes2/n_done;
     bayes2_ext(iter,:)=[n_done,cur_bayes2,0];
        
     if ~isempty(progress)
@@ -158,5 +216,8 @@ if ~isempty(progress)
     delete(h_wait);
 end
 %fprintf('BF2 time (%g secs)\n',toc);
-bayes2 =  exp(log(bayes2/n_done)-sum(betaln(m(:,1)+1,m(:,2)+1)));
+
+%% No need to divide by likelihood of null model because it was already done for each sample.
+%bayes2 =  exp(log(bayes2/n_done)-sum(betaln(m(:,1)+1,m(:,2)+1)));
+bayes2 = bayes2/n_done;
 

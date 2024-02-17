@@ -175,7 +175,7 @@ for i=1:n_vert
             q=[];
         end
         if isempty(q)
-            res.bayes2(i)=bayes_factor_2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate);
+            res.bayes2(i)=bayes_factor_2_Dan_v2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate);
             if isjava(cache)
                 cache.update(key,res.bayes2(i));
             end

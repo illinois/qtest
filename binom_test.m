@@ -95,7 +95,7 @@ if ismember('b1',options) || ismember('B1',options)
 end
 if ismember('b2',options) || ismember('B2',options)
     t_this=tic;
-    res.bayes2=bayes_factor_2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate);
+    res.bayes2=bayes_factor_2_Dan_v2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate);
     res.b2_time=toc(t_this);
 end
 if ismember('p',options) || ismember('P',options)
