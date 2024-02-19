@@ -3,15 +3,15 @@ clc
 
 if ismac
     operatingSystem = "macOS";
-    architecture = computer('arch')
+    architecture = computer('arch');
 elseif isunix
     % Code to run on Linux platform
-    disp('Platform not supported')
+    disp('Platform not supported');
 elseif ispc
     % Code to run on Windows platform
-    disp('Platform not supported')
+    disp('Platform not supported');
 else
-    disp('Platform not supported')
+    disp('Platform not supported');
 end
 
 currentFile = mfilename('fullpath');
