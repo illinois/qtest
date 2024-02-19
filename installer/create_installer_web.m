@@ -4,10 +4,18 @@ clc
 if ispc
     % Code to run on Windows platform
     % Cmdline : 
+    % build : 
     % qtest\installer>matlab.exe -nosplash -wait -nodesktop -batch "run('create_installer_web.m'); exit;"
     operatingSystem = 'windows';
     appNameWithExt = 'qtest.exe';
 elseif ismac
+    % Code to run on Windows platform
+    % Terminal : 
+    % Export path : 
+    % export PATH=$PATH:/$(ls -lt /Applications | grep MATLAB_ | head -n 1 | awk '{print "Applications/" $NF}')/bin/
+    % build : 
+    % qtest\installer>matlab -nosplash -wait -nodesktop -batch "run('create_installer_web.m'); exit;"
+
     operatingSystem = "macOS";
     appNameWithExt = 'qtest.app';
 elseif isunix
