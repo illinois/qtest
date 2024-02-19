@@ -52,7 +52,7 @@ max_iter=85;
 while 1
     options_lin=optimset('LargeScale',l_scale,'Display','off','MaxIter',max_iter);
     [valid,~,exitflag]=linprog(ones(1,size(A,2)),A,B,Aeq,Beq, ...
-        [],[],[],options_lin);
+        [],[],options_lin);
     if exitflag==0
         max_iter=max_iter*2;
         continue;
