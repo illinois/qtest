@@ -1,4 +1,4 @@
-function [bayes2,bayes2_ext]=bayes_factor_2_Dan_v2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate,epsilon,progress)
+function [bayes2,bayes2_ext]=bayes_factor_2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate,epsilon,progress)
 %BAYES_FACTOR_2 computes the Bayes factor using the direct method
 %   BAYES2=bayes_factor_2(M,A,B,AEQ,BEQ,INEQ_IDX,N,RSTATE,EPSILON)
 %   
