@@ -67,7 +67,7 @@ sample=[];
 %options_lin=optimset('LargeScale','off','Simplex','off','Display','off');
 options_lin=optimset('LargeScale','on','Display','off');
 [valid,lambda,exitflag,output]=linprog(ones(1,size(A,2)),A,B,Aeq,Beq, ...
-    [],[],[],options_lin);
+    [],[],options_lin);
 if exitflag<=0
     %error('Cannot find a feasible point!');
     return;
