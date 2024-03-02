@@ -876,7 +876,9 @@ else
 end
 autosave=0;
 if get(handles.checkbox_autosave,'value')>0
-    [autosave_file,autosave_path]=uiputfile({'*.*','All Files'},'Auto Save Results As');
+    [autosave_file,autosave_path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
+        '*.csv','Comma separated values (*.csv)'; ...
+        '*.txt','Text files (*.txt)';'*.*','All Files'},'Auto Save Results As');
     if autosave_file==0
         return;
     end
@@ -3364,7 +3366,8 @@ function pushbutton_load_spec_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton_load_spec (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[file,path]=uigetfile({'*.*','All Files'},'Load Specification');
+[file,path]=uigetfile({'*.mat','MAT-files (*.mat)'; ...
+    '*.txt','Text files (*.txt)';'*.*','All Files'},'Load Specification');
 if file~=0
     [from_file,msg]=load_spec_file(file,path,handles);
     if isempty(from_file)
@@ -3900,7 +3903,8 @@ function pushbutton_load_data_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uigetfile({'*.*','All Files'},'Load Observations');
+[file,path]=uigetfile({'*.mat','MAT-files (*.mat)'; ...
+    '*.txt','Text files (*.txt)';'*.*','All Files'},'Load Observations');
 if file~=0
     if isequal(lower(file((end-3):end)),'.txt')
         fid=fopen([path,file],'rt');
@@ -4264,7 +4268,8 @@ function pushbutton_results_export_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uiputfile({'*.*','All Files'},'Export Results As');
+[file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; '*.csv','Comma separated values (*.csv)'; ...
+    '*.txt','Text files (*.txt)';'*.*','All Files'},'Export Results As');
 if file~=0
     export_results(file,path,handles,0);
 end
@@ -4678,7 +4683,8 @@ function pushbutton_save_data_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uiputfile({'*.*','All Files'},'Save Observations');
+[file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
+    '*.txt','Text files (*.txt)';'*.*','All Files'},'Save Observations');
 if file~=0
     try
         if isequal(lower(file((end-3):end)),'.txt')
@@ -4796,7 +4802,7 @@ if isempty(handles.gambles.pairs)
     return;
 end
 
-[file,path]=uigetfile({'*.*','All Files'},'Load Theory');
+[file,path]=uigetfile({'*.csv','Comma separated values (*.csv)';'*.*','All Files'},'Load Theory');
 if file~=0
     fid=fopen([path,file],'rt');
     try
@@ -4903,7 +4909,7 @@ if isempty(handles.theories{t_i}.vertices)
     return;
 end
 
-[file,path]=uiputfile({'*.*','All Files'},'Save Theory');
+[file,path]=uiputfile({'*.csv','Comma separated values (*.csv)';'*.*','All Files'},'Save Theory');
 if file~=0
     try
         fid=fopen([path,file],'wt');
@@ -5073,7 +5079,8 @@ for v_i=1:n_vert
     V(v_i,:)=handles.theories{t_i}.vertices{v_i}.pairs(:,3)';
 end
 
-[file,path]=uiputfile({'*.*','All Files'},'Save Specification');
+[file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
+    '*.txt','Text files (*.txt)';'*.*','All Files'},'Save Specification');
 if file~=0
     
     if ~isfield(handles.theories{t_i},'portahull') || ~isequal(handles.theories{t_i}.portahull.V,V)
