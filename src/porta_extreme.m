@@ -30,7 +30,7 @@ if nargin<3
         options_lin=optimoptions('linprog','Algorithm','dual-simplex','Display','off');
     end
     [valid,lambda,exitflag,output]=linprog(ones(1,size(A,2)),A,B,[],[], ...
-        [],[],options_lin);
+        [],[],[],options_lin);
     if exitflag<=0
         %error('Cannot find a feasible point!');
         V=[];
@@ -38,7 +38,7 @@ if nargin<3
     end
 %     %use another corner
 %     [valid2,~,~,~]=linprog(-ones(1,size(A,2)),A,B,[],[], ...
-%         [],[],options_lin);
+%         [],[],[],options_lin);
 %     valid=0.5*(valid+valid2)';
     valid=valid';
 else
@@ -64,7 +64,7 @@ while sum((Anum./Aden)*(Vnum./Vden)'>(Bnum./Bden))>0
         error('porta_extreme: cannot find a valid interior point, need better precision');
     end
     [newvalid,~,~,~]=linprog(2*rand(1,size(A,2))-1,Anum./Aden,Bnum./Bden,[],[], ...
-        [],[],options_lin);
+        [],[],[],options_lin);
     valid_sum=valid_sum+newvalid';
     valid_count=valid_count+1;
     valid=valid_sum/valid_count;
