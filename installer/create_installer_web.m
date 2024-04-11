@@ -21,7 +21,8 @@ function [operatingSystem, appNameWithExt] = getOperatingSystem()
         operatingSystem = 'windows';
         appNameWithExt = 'qtest.exe';
     elseif ismac
-        error('Platform not supported');
+        operatingSystem = 'macOS';
+        appNameWithExt = 'qtest.app';
     else
         error('Platform not supported');
     end
