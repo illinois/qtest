@@ -90,6 +90,9 @@ end
 
 function qversion = getVersionFromGit()
     global rootDir;
+    % setting default version
+    qversion = defaultVersion();
+
     % Save the current directory
     currentDir = pwd;
 
@@ -120,17 +123,20 @@ function qversion = getVersionFromGit()
             
             qversion = getVersionString(tag, codeChangeDetected);
         else
-            warning('Error: Unable to retrieve the latest tag. Check if git is installed.');
-            qversion = "2.1.1";
+            warning('Error: Unable to retrieve the latest tag. Check if git is installed. Resolving to default version.');
         end
 
     else
-        error('Not in a Git repository. Make sure you are running from a git repository.');
+        warning('Not in a Git repository. Make sure you are running from a git repository. Resolving to default version.');
     end
 
     % Return to the original directory
     fprintf("Reverting current directory back to %s", currentDir);
     cd(currentDir);
+end
+
+function qversion = defaultVersion()
+    qversion = '2.1.2';
 end
 
 function versionString = getVersionString(tag, codeChanged)
