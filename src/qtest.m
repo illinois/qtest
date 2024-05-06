@@ -719,7 +719,7 @@ function pushbutton_load_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uigetfile('*.mat','Load Data');
+[file,path]=uigetfile({'*.*','All Files'},'Load Data');
 if file~=0
     f=load([path,file]);
     if ~isfield(f,'qtest_version') || (~isequal(f.qtest_version,'0.3') ...
@@ -3366,8 +3366,7 @@ function pushbutton_load_spec_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton_load_spec (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[file,path]=uigetfile({'*.mat','MAT-files (*.mat)'; ...
-    '*.txt','Text files (*.txt)';'*.*','All Files'},'Load Specification');
+[file,path]=uigetfile({'*.*','All Files'},'Load Specification');
 if file~=0
     [from_file,msg]=load_spec_file(file,path,handles);
     if isempty(from_file)
@@ -3903,8 +3902,7 @@ function pushbutton_load_data_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uigetfile({'*.mat','MAT-files (*.mat)'; ...
-    '*.txt','Text files (*.txt)';'*.*','All Files'},'Load Observations');
+[file,path]=uigetfile({'*.*','All Files'},'Load Observations');
 if file~=0
     if isequal(lower(file((end-3):end)),'.txt')
         fid=fopen([path,file],'rt');
@@ -4802,7 +4800,7 @@ if isempty(handles.gambles.pairs)
     return;
 end
 
-[file,path]=uigetfile({'*.csv','Comma separated values (*.csv)';'*.*','All Files'},'Load Theory');
+[file,path]=uigetfile({'*.*','All Files'},'Load Theory');
 if file~=0
     fid=fopen([path,file],'rt');
     try
