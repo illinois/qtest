@@ -28,6 +28,12 @@ else
     echo "QTEST_VERSION is set to $QTEST_VERSION"
 fi
 
+if [ "$(uname -m)" = "arm64" ]; then
+    MAC_FOLDER_NAME="maca64"
+else
+    MAC_FOLDER_NAME="maci64"
+fi
+
 # Define constants
 INSTALLER_SIGNING_IDENTITY="Developer ID Installer: University of Illinois at Urbana-Champaign (UPV4CB4H6W)"
 APP_SIGNING_IDENTITY="Developer ID Application: University of Illinois at Urbana-Champaign (UPV4CB4H6W)"
@@ -36,7 +42,7 @@ APP_UNIQUE_ID="edu.illinois.psychology.qtest"
 ENTITLEMENTS_FILE="entitlements.plist"
 ENTITLEMENTS_PATH="$SCRIPT_PATH/$ENTITLEMENTS_FILE"
 ROOT_PATH="$SCRIPT_PATH/../.."
-BASE_PATH="$ROOT_PATH/build/macOS/maci64"
+BASE_PATH="$ROOT_PATH/build/macOS/$MAC_FOLDER_NAME"
 APP_NAME="qtest.app"
 APP_PATH="$BASE_PATH/$APP_NAME"
 INSTALLER_DIR_NAME="temp_installer"

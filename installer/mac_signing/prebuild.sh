@@ -32,8 +32,13 @@ VERBOSE_LEVEL=4
 OPTIONS="--options=runtime"
 TIMESTAMP="--timestamp"
 
-# Define file paths
-FILES=("portamex.mexmaci64" "portavmex.mexmaci64")
+if [ "$(uname -m)" = "arm64" ]; then
+    FILES=("portamex.mexmaca64" "portavmex.mexmaca64")
+
+else
+    FILES=("portamex.mexmaci64" "portavmex.mexmaci64")
+fi
+
 SRC_PATH="$ROOT_PATH/src"
 
 # Function to check the exit status of commands
