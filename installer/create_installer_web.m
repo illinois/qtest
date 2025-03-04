@@ -1,19 +1,63 @@
 function main()
     clearvars;
     clc;
+    checkRequiredToolboxes();
 
     global rootDir;
     % Determine the operating system and architecture
     [operatingSystem, appNameWithExt] = getOperatingSystem();
 
     % Set up directories
-    [currentBuildDir, installerOutputDir, srcDir] = setupDirectories(operatingSystem);
+    [currentBuildDir, installerOutputDir, srcDir, currentFileDir] = setupDirectories(operatingSystem);
+
+    if ismac        
+        envFilePath = fullfile(currentFileDir, 'mac_signing', 'apple.env');
+        if ~isfile(envFilePath)
+            error('apple.env not found. Create a copy of apple_template.env, fill the values and rename it to apple.env.');
+        end
+        
+        loadenv(envFilePath);
+        setenv('QTEST_VERSION', getVersionFromGit());
+
+        command = fullfile(currentFileDir, 'mac_signing', 'prebuild.sh');
+        [status, cmdout] = system(command); 
+        disp(cmdout);
+    end
 
     % Compile MATLAB code
     compileMATLABCode(currentBuildDir, appNameWithExt);
 
-    % Package the application
-    packageApplication(currentBuildDir, installerOutputDir, appNameWithExt);
+    disp('Creating installer');
+    if ismac
+        command = fullfile(currentFileDir, 'mac_signing', 'prepackaging.sh');
+        [status, cmdout] = system(command); 
+        disp(cmdout);
+
+        command = fullfile(currentFileDir, 'mac_signing', 'postpackaging.sh');
+        [status, cmdout] = system(command); 
+        disp(cmdout);
+    else 
+        % Package the application
+        packageApplication(currentBuildDir, installerOutputDir, appNameWithExt);
+    end
+
+    disp('Installer creation done');
+end
+
+function checkRequiredToolboxes()
+    requiredToolboxes = {'MATLAB Compiler', ...
+                         'Statistics and Machine Learning Toolbox', ...
+                         'Optimization Toolbox', ...
+                         'Parallel Computing Toolbox'};
+    
+    v = ver;
+    installedToolboxes = {v.Name};
+    
+    for i = 1:length(requiredToolboxes)
+        if ~ismember(requiredToolboxes{i}, installedToolboxes)
+            error('Required toolbox "%s" is not installed. Please install it to proceed.', requiredToolboxes{i});
+        end
+    end
 end
 
 function [operatingSystem, appNameWithExt] = getOperatingSystem()
@@ -28,7 +72,7 @@ function [operatingSystem, appNameWithExt] = getOperatingSystem()
     end
 end
 
-function [currentBuildDir, installerOutputDir, srcDir] = setupDirectories(operatingSystem)
+function [currentBuildDir, installerOutputDir, srcDir, currentFileDir] = setupDirectories(operatingSystem)
     global rootDir;
     
     currentFile = mfilename('fullpath');
