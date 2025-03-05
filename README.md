@@ -17,7 +17,10 @@ Unfortunately, our software is not currently compatible with newer Macs that hav
 To use the QTEST source code directly in MATLAB:
 
 1. A valid MATLAB license is required
-2. The MATLAB Optimization Toolbox must be installed
+2. The following Toolboxes must be installed:
+   - Statistics and Machine Learning Toolbox
+   - Optimization Toolbox
+   - Parallel Computing Toolbox
 
 ## Download
 
