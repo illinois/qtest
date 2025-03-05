@@ -1,13 +1,5 @@
 #!/bin/bash
 
-################
-# get access for UIUC developer account - https://otm.illinois.edu/disclose-protect/mobile-application-development
-# generate app specific password - https://support.apple.com/en-us/102654
-# install all the certs from certs.zip that the team maintains.
-    # DeveloperIDApplicationCertificate
-    # MacInstallerDistributionCertificate
-################
-
 SCRIPT_PATH="$(dirname "$(realpath "$0")")"
 
 # Retrieve APPLE_ID, PASSWORD from environment variables
@@ -61,6 +53,5 @@ for FILE in "${FILES[@]}"; do
     codesign --verbose=$VERBOSE_LEVEL $OPTIONS -s "$APP_SIGNING_IDENTITY" --entitlements $ENTITLEMENTS_PATH $TIMESTAMP "$SRC_PATH/$FILE"
     check_command_status "codesign for $EXEC"
 done
-
 
 echo "Code signing completed."

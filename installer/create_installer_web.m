@@ -19,6 +19,7 @@ function main()
         loadenv(envFilePath);
         setenv('QTEST_VERSION', getVersionFromGit());
 
+        disp('Signing dependencies');
         command = fullfile(currentFileDir, 'mac_signing', 'prebuild.sh');
         [status, cmdout] = system(command); 
         disp(cmdout);
@@ -27,16 +28,18 @@ function main()
     % Compile MATLAB code
     compileMATLABCode(currentBuildDir, appNameWithExt);
 
-    disp('Creating installer');
     if ismac
+        disp('Signing application');
         command = fullfile(currentFileDir, 'mac_signing', 'prepackaging.sh');
         [status, cmdout] = system(command); 
         disp(cmdout);
 
+        disp('Creating installer');
         command = fullfile(currentFileDir, 'mac_signing', 'postpackaging.sh');
         [status, cmdout] = system(command); 
         disp(cmdout);
     else 
+        disp('Creating installer');
         % Package the application
         packageApplication(currentBuildDir, installerOutputDir, appNameWithExt);
     end
@@ -126,7 +129,8 @@ function opts = createPackagingOptions(installerOutputDir)
     opts.AuthorEmail = 'regenwet@illinois.edu';
     opts.AuthorCompany = 'UIUC';
     opts.Version = getVersionFromGit();
-    opts.InstallerName = 'qtest_Installer_web';
+    opts.InstallerName = determineInstallerName();
+    
     opts.OutputDir = installerOutputDir;
     opts.Description = 'QTEST is a custom-designed public-domain statistical analysis package for order-constrained inference.';
     opts.Summary = 'QTEST is a custom-designed public-domain statistical analysis package for order-constrained inference.';
@@ -175,7 +179,7 @@ function qversion = getVersionFromGit()
     end
 
     % Return to the original directory
-    fprintf("Reverting current directory back to %s", currentDir);
+    fprintf("Reverting current directory back to %s\n", currentDir);
     cd(currentDir);
 end
 
@@ -212,6 +216,22 @@ function [majorVersion, minorVersion, patchVersion] = getMMPFromTag(versionStr)
         error('Invalid version format in version string %s', versionStr);
     end
 
+end
+
+function installerName = determineInstallerName()
+    if ispc
+        installerName = 'win64_qtest_Installer';
+    elseif ismac
+        if strcmp(computer('arch'), 'maci64')
+            installerName = 'maci64_qtest_Installer';
+        elseif strcmp(computer('arch'), 'maca64')
+            installerName = 'maca64_qtest_Installer';
+        else
+            error('Unsupported Mac architecture');
+        end
+    else
+        error('Unsupported platform');
+    end
 end
 
 function displayPackagingOptions(opts)

@@ -1,13 +1,5 @@
 #!/bin/bash
 
-################
-# Instructions:
-# - Get access for UIUC developer account: https://otm.illinois.edu/disclose-protect/mobile-application-development
-# - Generate an app-specific password: https://support.apple.com/en-us/102654
-# - Install all certificates from certs.zip that the team maintains:
-#   - Developer ID Application Certificate
-#   - Mac Installer Distribution Certificate
-################
 SCRIPT_PATH="$(dirname "$(realpath "$0")")"
 
 # Retrieve APPLE_ID, PASSWORD from environment variables
@@ -30,8 +22,10 @@ fi
 
 if [ "$(uname -m)" = "arm64" ]; then
     MAC_FOLDER_NAME="maca64"
+    PKG_NAME="maca64_qtest_Installer.pkg"
 else
     MAC_FOLDER_NAME="maci64"
+    PKG_NAME="maci64_qtest_Installer.pkg"
 fi
 
 # Define constants
@@ -47,7 +41,6 @@ APP_NAME="qtest.app"
 APP_PATH="$BASE_PATH/$APP_NAME"
 INSTALLER_DIR_NAME="temp_installer"
 INSTALLER_DIR_PATH="$BASE_PATH/$INSTALLER_DIR_NAME"
-PKG_NAME="qtest_Installer.pkg"
 PKG_PATH="$BASE_PATH/$PKG_NAME"
 INFO_PLIST_NAME="Info.plist"
 INFO_PLIST_PATH="$BASE_PATH/$INFO_PLIST_NAME"
@@ -107,7 +100,4 @@ check_command_status "stapler staple"
 spctl -a -v --type install "$PKG_PATH"
 check_command_status "spctl verification"
 
-echo "Code signing, notarization, and verification completed successfully."
-
-
-
+echo "Code signing, notarization, and verification of installer completed successfully."

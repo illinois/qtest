@@ -1,14 +1,5 @@
 #!/bin/bash
 
-################
-# Instructions:
-# - Get access for UIUC developer account: https://otm.illinois.edu/disclose-protect/mobile-application-development
-# - Generate an app-specific password: https://support.apple.com/en-us/102654
-# - Install all certificates from certs.zip that the team maintains:
-#   - Developer ID Application Certificate
-#   - Mac Installer Distribution Certificate
-################
-
 SCRIPT_PATH="$(dirname "$(realpath "$0")")"
 
 # Retrieve APPLE_ID, PASSWORD from environment variables
@@ -114,4 +105,4 @@ check_command_status "stapler staple"
 spctl -a -t exec -vvv "$APP_PATH"
 check_command_status "spctl verification"
 
-echo "Code signing, notarization, and verification completed successfully."
+echo "Code signing, notarization, and verification of application completed successfully."
