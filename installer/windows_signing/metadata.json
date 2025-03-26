@@ -1,6 +1,6 @@
 {
   "Endpoint": "https://eus.codesigning.azure.net",
-  "CodeSigningAccountName": "VenkateshSigningAccount",
-  "CertificateProfileName": "PublicTrust",
-  "CorrelationId": "FromUIUCAnyWhere"
+  "CodeSigningAccountName": "MikeCodeSigningAccount",
+  "CertificateProfileName": "MikePublicTrust",
+  "CorrelationId": ""
 }

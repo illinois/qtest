@@ -1,4 +1,4 @@
-@echo off
+ee@echo off
 
 REM Check if environment variables are set
 if "%AZURE_CLIENT_ID%"=="" (
@@ -21,6 +21,10 @@ set ROOT_PATH=%SCRIPT_PATH%..\..
 set BASE_PATH=%ROOT_PATH%\src
 
 REM Unzip necessary files
+
+@REM Delete folder if it exists
+if exist "%SCRIPT_PATH%SignTool" rmdir /s /q "%SCRIPT_PATH%SignTool"
+if exist "%SCRIPT_PATH%microsoft.trusted.signing.client" rmdir /s /q "%SCRIPT_PATH%microsoft.trusted.signing.client"
 
 echo Unzipping SignTool-10.0.22621.6-x64.zip
 powershell -Command "Expand-Archive -Path '%SCRIPT_PATH%SignTool-10.0.22621.6-x64.zip' -DestinationPath '%SCRIPT_PATH%SignTool'"
