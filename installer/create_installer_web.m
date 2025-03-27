@@ -25,6 +25,18 @@ function main()
         disp(cmdout);
     end
 
+    if ispc        
+        envFilePath = fullfile(currentFileDir, 'windows_signing', 'windows.env');
+        if ~isfile(envFilePath)
+            error('windows.env not found. Create a copy of windows_template.env, fill the values and rename it to windows.env.');
+        end
+        
+        loadenv(envFilePath);
+        disp('Signing dependencies');
+        command = fullfile(currentFileDir, 'windows_signing', 'prebuild.bat');
+        system(command,'-echo');
+    end
+
     % Compile MATLAB code
     compileMATLABCode(currentBuildDir, appNameWithExt);
 
@@ -39,9 +51,18 @@ function main()
         [status, cmdout] = system(command); 
         disp(cmdout);
     else 
+        disp('Signing application');
+        command = fullfile(currentFileDir, 'windows_signing', 'prepackaging.bat');
+        system(command,'-echo');
+
         disp('Creating installer');
         % Package the application
         packageApplication(currentBuildDir, installerOutputDir, appNameWithExt);
+
+        disp('Signing installer');
+        command = fullfile(currentFileDir, 'windows_signing', 'postpackaging.bat');
+        system(command,'-echo');
+        
     end
 
     disp('Installer creation done');
