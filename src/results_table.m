@@ -569,8 +569,10 @@ for r_i=1:length(res.res)
             p=res.res{r_i}.p;
         elseif isfield(res.res{r_i},'bayes_exact')
             p=res.res{r_i}.bayes_exact;
+        elseif isfield(res.res{r_i},'bayes_dat')
+            p=res.res{r_i}.bayes_dat;
         else
-            p=res.res{r_i}.bayes2;
+            p=res.res{r_i}.bayes_gibbs;
         end
         if p>p_max
             p_max=p;

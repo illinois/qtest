@@ -1,6 +1,6 @@
-function bayes1=bayes_factor_1(m,A,B,N_actual,rstate)
-%BAYES_FACTOR_1 computes the Bayes factor using the draw-and-test method
-%   BAYES1=bayes_factor_1(M,A,B,N,RSTATE)
+function bayes_dat=bayes_factor_draw_and_test(m,A,B,N_actual,rstate)
+%bayes_factor_draw_and_test computes the Bayes factor using the draw-and-test method
+%   BAYES_DAT=bayes_factor_draw_and_test(M,A,B,N,RSTATE)
 %   
 %   M is the data matrix, where each row gives the outcome of a binomial
 %   test. For example, for a 3-dimensional case, with 20 observations per
@@ -18,7 +18,7 @@ function bayes1=bayes_factor_1(m,A,B,N_actual,rstate)
 %
 % Outputs:
 %
-%   BAYES1 is the Bayes factor computed with volume method.
+%   BAYES_DAT is the Bayes factor computed with volume method.
 %   Caution: must not be used for non-full-rank models!
 %
 
@@ -49,4 +49,4 @@ for iter=1:n_chunks
 end
 prior_vol = prior_vol/N_actual;
 post_vol = post_vol/N_actual;
-bayes1 = post_vol/prior_vol;
+bayes_dat = post_vol/prior_vol;
