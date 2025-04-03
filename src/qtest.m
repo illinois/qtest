@@ -876,9 +876,10 @@ else
 end
 autosave=0;
 if get(handles.checkbox_autosave,'value')>0
-    [autosave_file,autosave_path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
+    [autosave_file,autosave_path]=uiputfile({'*.txt','Text files (*.txt)'; ...
+        '*.mat','MAT-files (*.mat)'; ...
         '*.csv','Comma separated values (*.csv)'; ...
-        '*.txt','Text files (*.txt)';'*.*','All Files'},'Auto Save Results As');
+        '*.*','All Files'},'Auto Save Results As');
     if autosave_file==0
         return;
     end
@@ -4266,8 +4267,9 @@ function pushbutton_results_export_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; '*.csv','Comma separated values (*.csv)'; ...
-    '*.txt','Text files (*.txt)';'*.*','All Files'},'Export Results As');
+[file,path]=uiputfile({'*.txt','Text files (*.txt)'; '*.mat','MAT-files (*.mat)'; ...
+    '*.csv','Comma separated values (*.csv)'; ...
+    '*.*','All Files'},'Export Results As');
 if file~=0
     export_results(file,path,handles,0);
 end
@@ -4681,8 +4683,9 @@ function pushbutton_save_data_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
-    '*.txt','Text files (*.txt)';'*.*','All Files'},'Save Observations');
+[file,path]=uiputfile({'*.txt','Text files (*.txt)'; ...
+    '*.mat','MAT-files (*.mat)'; ...
+    '*.*','All Files'},'Save Observations');
 if file~=0
     try
         if isequal(lower(file((end-3):end)),'.txt')
@@ -5077,8 +5080,9 @@ for v_i=1:n_vert
     V(v_i,:)=handles.theories{t_i}.vertices{v_i}.pairs(:,3)';
 end
 
-[file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
-    '*.txt','Text files (*.txt)';'*.*','All Files'},'Save Specification');
+[file,path]=uiputfile({'*.txt','Text files (*.txt)'; ...
+    '*.mat','MAT-files (*.mat)'; ...
+    '*.*','All Files'},'Save Specification');
 if file~=0
     
     if ~isfield(handles.theories{t_i},'portahull') || ~isequal(handles.theories{t_i}.portahull.V,V)
