@@ -23,10 +23,10 @@ function res=bayesian_test_super(m,V,W,lambda,options,N_actual,N_burn,rstate,cac
 %
 %   OPTIONS is a cell array specifying the tests to be run. Each array
 %   element should be one of the following strings:
-%       'b1' - indicates that Bayes factor 1 should be computed
-%       'b2' - indicates that Bayes factor 2 should be computed
+%       'b1' - indicates that Bayes factor using Draw and Test should be computed
+%       'b2' - indicates that Bayes factor using Gibbs Sampler should be computed
 %       'p'  - indicates that Bayesian p-value and DIC should be computed
-%   Example: to compute Bayesian p and Bayes factor 2, OPTIONS should be
+%   Example: to compute Bayesian p and Bayes factor using Gibbs Sampler, OPTIONS should be
 %       { 'p', 'b2' }
 %   Note: the exact Bayes factor will always be computed so OPTIONS can be
 %   left empty {}.
@@ -51,8 +51,8 @@ function res=bayesian_test_super(m,V,W,lambda,options,N_actual,N_burn,rstate,cac
 %   for individual vertices and theory-level results.
 %   Vertex-level results:
 %       bayes: exact Bayes factor of each vertex
-%       bayes1: Bayes factor 1 of each vertex
-%       bayes2: Bayes factor 2 of each vertex
+%       bayes_dat: Bayes factor using Draw and Test of each vertex
+%       bayes_gibbs: Bayes factor using Gibbs Sampler of each vertex
 %       p: Bayesian p-value of each vertex
 %       DIC: DIC of each vertex
 %       vol: prior volume of each vertex
@@ -67,8 +67,8 @@ function res=bayesian_test_super(m,V,W,lambda,options,N_actual,N_burn,rstate,cac
 %       W_bayes: exact Bayes factor, weighted using either the prior volume
 %       (when W is empty) or the given weights in W
 %       simple_avg_bayes: exact Bayes factor using simple average
-%       W_bayes1, W_bayes2, simple_avg_bayes1, simple_avg_bayes2:
-%           these are the respective results for Bayes factor 1 and 2
+%       W_bayes_dat, W_bayes_gibbs, simple_avg_bayes_dat, simple_avg_bayes_gibbs:
+%           these are the respective results for Bayes factor using "Draw and Test" and "Gibbs Sampler" method
 %       avg_p: Bayesian p-value, combined using the posterior volume
 %       avg_DIC: DIC, combined using the posterior volume
 %       time: overall time (in seconds)
@@ -110,18 +110,18 @@ ineq_idx=1:n;
 %per vertex analysis
 res.bayes=zeros(n_vert,1);
 if ismember('b1',options) || ismember('B1',options)
-    res.bayes1=zeros(n_vert,1);
+    res.bayes_dat=zeros(n_vert,1);
     res.b1_cached=zeros(n_vert,1,'uint8');
     res.b1_time=zeros(n_vert,1);
 else
-    res.bayes1=[];
+    res.bayes_dat=[];
 end
 if ismember('b2',options) || ismember('B2',options)
-    res.bayes2=zeros(n_vert,1);
+    res.bayes_gibbs=zeros(n_vert,1);
     res.b2_cached=zeros(n_vert,1,'uint8');
     res.b2_time=zeros(n_vert,1);
 else
-    res.bayes2=[];
+    res.bayes_gibbs=[];
 end
 if ismember('p',options) || ismember('P',options)
     res.p=zeros(n_vert,1);
@@ -147,7 +147,7 @@ for i=1:n_vert
     res.vol(i)=prod(B(1:n)+B((n+1):end));
     res.bayes(i)=bayes_factor_super(m,V(i,:),lambda(i));
     res.post_vol(i)=res.bayes(i)*res.vol(i);
-    if ~isempty(res.bayes1)
+    if ~isempty(res.bayes_dat)
         t_vert = tic;
         if isjava(cache)
             key=[cache.CID_B1_SUPER; n; V(i,:)'; lambda(i); m(:); N_actual; rstate];
@@ -156,17 +156,17 @@ for i=1:n_vert
             q=[];
         end
         if isempty(q)
-            res.bayes1(i)=bayes_factor_1(m,A,B,N_actual,rstate);
+            res.bayes_dat(i)=bayes_factor_draw_and_test(m,A,B,N_actual,rstate);
             if isjava(cache)
-                cache.update(key,res.bayes1(i));
+                cache.update(key,res.bayes_dat(i));
             end
         else
-            res.bayes1(i)=q;
+            res.bayes_dat(i)=q;
             res.b1_cached(i)=1;
         end
         res.b1_time(i)=toc(t_vert);
     end
-    if ~isempty(res.bayes2)
+    if ~isempty(res.bayes_gibbs)
         t_vert = tic;
         if isjava(cache)
             key=[cache.CID_B2_SUPER; n; V(i,:)'; lambda(i); m(:); N_actual; rstate];
@@ -175,12 +175,12 @@ for i=1:n_vert
             q=[];
         end
         if isempty(q)
-            res.bayes2(i)=bayes_factor_2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate);
+            res.bayes_gibbs(i)=bayes_factor_gibbs(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate);
             if isjava(cache)
-                cache.update(key,res.bayes2(i));
+                cache.update(key,res.bayes_gibbs(i));
             end
         else
-            res.bayes2(i)=q;
+            res.bayes_gibbs(i)=q;
             res.b2_cached(i)=1;
         end
         res.b2_time(i)=toc(t_vert);
@@ -225,13 +225,13 @@ end
 vol_sum=sum(W);
 res.W_bayes=(W*res.bayes)/vol_sum;
 res.simple_avg_bayes=sum(res.bayes)/n_vert;
-if ~isempty(res.bayes1)
-    res.W_bayes1=(W*res.bayes1)/vol_sum;
-    res.simple_avg_bayes1=sum(res.bayes1)/n_vert;
+if ~isempty(res.bayes_dat)
+    res.W_bayes_dat=(W*res.bayes_dat)/vol_sum;
+    res.simple_avg_bayes_dat=sum(res.bayes_dat)/n_vert;
 end
-if ~isempty(res.bayes2)
-    res.W_bayes2=(W*res.bayes2)/vol_sum;
-    res.simple_avg_bayes2=sum(res.bayes2)/n_vert;
+if ~isempty(res.bayes_gibbs)
+    res.W_bayes_gibbs=(W*res.bayes_gibbs)/vol_sum;
+    res.simple_avg_bayes_gibbs=sum(res.bayes_gibbs)/n_vert;
 end
 if ~isempty(res.p)
     vol_sum=sum(res.post_vol);

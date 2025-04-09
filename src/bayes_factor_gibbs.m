@@ -1,6 +1,6 @@
-function [bayes2,bayes2_ext]=bayes_factor_2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate,epsilon,progress)
-%BAYES_FACTOR_2 computes the Bayes factor using the direct method
-%   BAYES2=bayes_factor_2(M,A,B,AEQ,BEQ,INEQ_IDX,N,RSTATE,EPSILON)
+function [bayes_gibbs,bayes_gibbs_ext]=bayes_factor_gibbs(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate,epsilon,progress)
+%bayes_factor_gibbs computes the Bayes factor using the gibbs sampler method
+%   BAYES_GIBBS=bayes_factor_gibbs(M,A,B,AEQ,BEQ,INEQ_IDX,N,RSTATE,EPSILON)
 %   
 %   M is the data matrix, where each row gives the outcome of a binomial
 %   test. For example, for a 3-dimensional case, with 20 observations per
@@ -20,14 +20,14 @@ function [bayes2,bayes2_ext]=bayes_factor_2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rsta
 %   be used to create repeatable results.
 %
 %   EPSILON is optional. This is a value in the interval [0,0.5) such that
-%   all likelihood for computing BAYES2 will be constrained to within
+%   all likelihood for computing BAYES_GIBBS will be constrained to within
 %   the interval [EPSILON,(1-EPSILON)]. Default is 0.
 %   
 %   PROGRESS is optional. It should be a non-empty text string for progress bar.
 %
 % Outputs:
 %
-%   BAYES2 is the Bayes factor computed with the direct method.
+%   BAYES_GIBBS is the Bayes factor computed with the direct method.
 %
 
 if nargin>=8
@@ -44,7 +44,7 @@ if nargin<10
     progress=[];
 end
 
-%bayes2=[];
+%bayes_gibbs=[];
 % %find valid starting point
 % l_scale='on';
 % max_iter=85;
@@ -154,8 +154,8 @@ end
 
 CHUNK_SIZE=1000; %1e6;
 n_chunks=max(1,floor(N_actual/CHUNK_SIZE));
-bayes2 = 0;
-bayes2_ext=zeros(n_chunks,3);
+bayes_gibbs = 0;
+bayes_gibbs_ext=zeros(n_chunks,3);
 
 %% Marginal likelihood of null model (denominator in the Bayes factor) only depends on the data, not the particular sample, so we precompute it
 logdenom=sum(betaln(m(:,1)+1,m(:,2)+1));
@@ -191,23 +191,23 @@ for iter=1:n_chunks
     prior_sample=max(min(prior_sample,1-epsilon),epsilon);
 
     %% Revised Bayes factor calculation.  Normalize by marginal likelihood of the null model in each sample, instead of waiting until the end.  We precomputed it and called it logdenom.
-%      bayes2 = bayes2 + ...
+%      bayes_gibbs = bayes_gibbs + ...
 %          sum(prod(prior_sample.^(ones(N,1)*(m(:,1)')),2).* ...
 %          prod((1-prior_sample).^(ones(N,1)*(m(:,2)')),2));
-    bayes2=bayes2+sum( exp(sum(  (ones(N,1)*(m(:,1)')).*log(prior_sample) + (ones(N,1)*(m(:,2)')).*log(1-prior_sample) ,2) - logdenom )); 
+    bayes_gibbs=bayes_gibbs+sum( exp(sum(  (ones(N,1)*(m(:,1)')).*log(prior_sample) + (ones(N,1)*(m(:,2)')).*log(1-prior_sample) ,2) - logdenom )); 
     %%
     
     n_done=(iter-1)*CHUNK_SIZE+N;
     %% No need to divide by likelihood of null model because it was already done in each sample.
-    %cur_bayes2 =  exp(log(bayes2/n_done)-sum(betaln(m(:,1)+1,m(:,2)+1)));
-    cur_bayes2 =  bayes2/n_done;
-    bayes2_ext(iter,:)=[n_done,cur_bayes2,0];
+    %cur_bayes_gibbs =  exp(log(bayes_gibbs/n_done)-sum(betaln(m(:,1)+1,m(:,2)+1)));
+    cur_bayes_gibbs =  bayes_gibbs/n_done;
+    bayes_gibbs_ext(iter,:)=[n_done,cur_bayes_gibbs,0];
        
     if ~isempty(progress)
         waitbar(n_done/N_actual,h_wait,sprintf('Sampling %d/%d (Elapsed: %.0f secs)',n_done,N_actual,toc));
         if getappdata(h_wait,'canceling')
-            bayes2_ext=bayes2_ext(1:iter,:);
-            bayes2_ext(iter,3)=1;
+            bayes_gibbs_ext=bayes_gibbs_ext(1:iter,:);
+            bayes_gibbs_ext(iter,3)=1;
             break;
         end
     end
@@ -218,6 +218,6 @@ end
 %fprintf('BF2 time (%g secs)\n',toc);
 
 %% No need to divide by likelihood of null model because it was already done for each sample.
-%bayes2 =  exp(log(bayes2/n_done)-sum(betaln(m(:,1)+1,m(:,2)+1)));
-bayes2 = bayes2/n_done;
+%bayes_gibbs =  exp(log(bayes_gibbs/n_done)-sum(betaln(m(:,1)+1,m(:,2)+1)));
+bayes_gibbs = bayes_gibbs/n_done;
 

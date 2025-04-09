@@ -22,7 +22,7 @@ function varargout = qtest(varargin)
 
 % Edit the above text to modify the response to help qtest
 
-% Last Modified by GUIDE v2.5 24-Oct-2018 17:30:45
+% Last Modified by GUIDE v2.5 02-Apr-2025 14:28:08
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -998,7 +998,16 @@ for t_i=t_i_range
                         h_type_btn~=handles.radiobutton_type_all
                     continue;
                 end
-                test_txt='Bayes factor';
+                selected_method = get(handles.popupmenu_bayes_method, 'Value');
+                switch selected_method
+                    case 1
+                        method_description = 'Gibbs Sampler method';
+                    case 2
+                        method_description = 'Draw and Test method';
+                    otherwise
+                        method_description = '';
+                end
+                test_txt = sprintf('Bayes factor using (%s)', method_description);
             else
                 if h_type_btn~=handles.radiobutton_type_bayes_p && ...
                         h_type_btn~=handles.radiobutton_type_all
@@ -1081,7 +1090,7 @@ for tg_i=1:size(test_groups,1)
             if test_i==1 %frequentist test
                 [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
             elseif test_i==2 %bayes factor
-                [res,msg,new_portahull,user_cancel]=run_bayes2_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
             else
                 [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
             end
@@ -1170,7 +1179,7 @@ for tg_i=1:size(test_groups,1)
             if test_i==1 %frequentist test
                 [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
             elseif test_i==2 %bayes factor
-                [res,msg,new_portahull,user_cancel]=run_bayes2_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
             else
                 [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
             end
@@ -1536,8 +1545,8 @@ else
     end
 end
 
-function [res,msg,new_portahull,user_cancel]=run_bayes2_test(t_i,tag,set_idx,handles,check_volume,multicore)
-%performs bayes factor (bayes2) test on theory t_i and
+function [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,tag,set_idx,handles,check_volume,multicore)
+%performs bayes factor (bayes_gibbs) test on theory t_i and
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
 res=[]; msg=[]; new_portahull=[]; user_cancel=0;
 if ~isequal(tag,'radiobutton_from_file')
@@ -1664,26 +1673,41 @@ else
             else
                 progress_txt=['Computing Bayes Factor',vertex_txt];
             end
-            [bayes2,bayes2_ext]=bayes_factor_2(res_M,[cube_A; A_all{i}],[cube_B; b_all{i}], ...
-                Aeq,Beq,ineq_idx,handles.spec.gibbs_size,handles.spec.rstate, ...
-                0,progress_txt);
-            user_cancel=bayes2_ext(end,3);
-            if bayes2_ext(end,1)<res.gibbs_size
-                res.res{i}.n_done=bayes2_ext(end,1);
-            end
-            res.res{i}.bayes2=bayes2;
-            res.res{i}.bayes2_ext=bayes2_ext;
-            if isempty(res.res{i}.bayes2)
-                res=[];
-                msg='Infeasible data point (probability zero?)';
-                return;
+            selected_method = get(handles.popupmenu_bayes_method, 'Value');
+            switch selected_method
+                case 2
+                    bayes_dat = bayes_factor_draw_and_test(res_M, [cube_A; A_all{i}], [cube_B; b_all{i}], ...
+                        handles.spec.gibbs_size, handles.spec.rstate);
+                    res.res{i}.bayes_dat=bayes_dat;
+
+                    if isempty(res.res{i}.bayes_gibbs)
+                        res=[];
+                        msg='Infeasible data point (probability zero?)';
+                        return;
+                    end
+                otherwise
+                    [bayes_gibbs, bayes_gibbs_ext] = bayes_factor_gibbs(res_M, [cube_A; A_all{i}], [cube_B; b_all{i}], ...
+                        Aeq, Beq, ineq_idx, handles.spec.gibbs_size, handles.spec.rstate, ...
+                        0, progress_txt);
+                    user_cancel=bayes_gibbs_ext(end,3);
+                    if bayes_gibbs_ext(end,1)<res.gibbs_size
+                        res.res{i}.n_done=bayes_gibbs_ext(end,1);
+                    end
+                    res.res{i}.bayes_gibbs=bayes_gibbs;
+                    res.res{i}.bayes_gibbs_ext=bayes_gibbs_ext;
+
+                    if isempty(res.res{i}.bayes_gibbs)
+                        res=[];
+                        msg='Infeasible data point (probability zero?)';
+                        return;
+                    end
             end
         end
         res.res{i}.sample=[]; %samples no longer saved
     end
     if isequal(res.spec,'major') && length(A_all)>1
         %compute weighted statistics
-        res.weighted_res=supermajority_weighted_bayes2_test(res.res);
+        res.weighted_res=supermajority_weighted_bayes_gibbs_test(res.res);
     end
 end
 
@@ -1840,7 +1864,7 @@ else
     end
 end
 
-function wres=supermajority_weighted_bayes2_test(res)
+function wres=supermajority_weighted_bayes_gibbs_test(res)
 %%%% bayes factor
 total_w=0;
 for i=1:length(res)
@@ -3781,9 +3805,9 @@ elseif isequal(handles.results{r_idx}.type,'bayes_factor')
         if isempty(handles.results{r_idx}.res{r_i}); continue; end
         
         res_txt=[res_txt,sprintf('\n')];
-        if isfield(handles.results{r_idx}.res{r_i},'bayes2')
-            bayes2=handles.results{r_idx}.res{r_i}.bayes2;
-            res_txt=[res_txt,sprintf('Bayes factor (sampled) = %g\n',bayes2)];
+        if isfield(handles.results{r_idx}.res{r_i},'bayes_gibbs')
+            bayes_gibbs=handles.results{r_idx}.res{r_i}.bayes_gibbs;
+            res_txt=[res_txt,sprintf('Bayes factor (sampled) = %g\n',bayes_gibbs)];
         end
         if isfield(handles.results{r_idx}.res{r_i},'bayes_exact')
             res_txt=[res_txt,sprintf('Bayes factor (exact) = %g\n',handles.results{r_idx}.res{r_i}.bayes_exact)];
@@ -3799,10 +3823,10 @@ elseif isequal(handles.results{r_idx}.type,'bayes_factor')
                 res_txt=[res_txt,sprintf('[Actual Gibbs sample size = %d]\n',handles.results{r_idx}.res{r_i}.n_done)];
             end
         end
-        if isfield(handles.results{r_idx}.res{r_i},'bayes2_ext')
-            bayes2_ext=handles.results{r_idx}.res{r_i}.bayes2_ext;
+        if isfield(handles.results{r_idx}.res{r_i},'bayes_gibbs_ext')
+            bayes_gibbs_ext=handles.results{r_idx}.res{r_i}.bayes_gibbs_ext;
             h_plot=figure;
-            plot(bayes2_ext(:,1),bayes2_ext(:,2),'*-');
+            plot(bayes_gibbs_ext(:,1),bayes_gibbs_ext(:,2),'*-');
             xlabel('Sample size'); ylabel('Bayes factor'); grid on
             if ~isempty(plot_title); title(plot_title); end
             set(h_plot,'NumberTitle','off','Name','Results (Bayes factor)');
@@ -4156,11 +4180,11 @@ elseif isequal(lower(file((end-3):end)),'.txt')
                 if isfield(handles.results{i}.res{j},'post_vol')
                     fprintf(fid,'Posterior volume: %g\n',handles.results{i}.res{j}.post_vol);
                 end
-                if isfield(handles.results{i}.res{j},'bayes1')
-                    fprintf(fid,'bayes1: %g\n',handles.results{i}.res{j}.bayes1);
+                if isfield(handles.results{i}.res{j},'bayes_dat')
+                    fprintf(fid,'bayes_dat: %g\n',handles.results{i}.res{j}.bayes_dat);
                 end
-                if isfield(handles.results{i}.res{j},'bayes2')
-                    fprintf(fid,'bayes2: %g\n',handles.results{i}.res{j}.bayes2);
+                if isfield(handles.results{i}.res{j},'bayes_gibbs')
+                    fprintf(fid,'bayes_gibbs: %g\n',handles.results{i}.res{j}.bayes_gibbs);
                 end
                 if isfield(handles.results{i}.res{j},'bayes_exact')
                     fprintf(fid,'bayes_exact: %g\n',handles.results{i}.res{j}.bayes_exact);
@@ -4190,11 +4214,11 @@ else
         'Lambda','U','N','Random seed','Gibbs sample size','Burn-in size', ...
         'Vertex','Vertex weight','Vertex L/U', ...
         'Likelihood ratio','p-value','Warning','DIC','Prior volume', ...
-        'Posterior volume','Bayes factor 1','Bayes factor 2','Bayes factor exact', ...
+        'Posterior volume','Bayes factor using Draw and Test','Bayes factor using Gibbs','Bayes factor exact', ...
         'Weighted p-value','Weighted DIC','Weighted Bayes factor'};
     fnames={'dataset','type','theory','spec','volume','lambda', ...
         'U','N','rstate','gibbs_size','gibbs_burn','vertex','v_weight','v_param', ...
-        'loglike','p','warning','DIC','prior_vol','post_vol','bayes1','bayes2','bayes_exact', ...
+        'loglike','p','warning','DIC','prior_vol','post_vol','bayes_dat','bayes_gibbs','bayes_exact', ...
         'weighted_p','weighted_DIC','weighted_bf'};
     for i=1:length(fnames)
         fprintf(fid,flabels{i});
@@ -4359,13 +4383,13 @@ switch fname
         if ~isempty(res.res{i}) && isfield(res.res{i},'post_vol')
             f=sprintf('%g',res.res{i}.post_vol);
         end
-    case 'bayes1'
-        if ~isempty(res.res{i}) && isfield(res.res{i},'bayes1')
-            f=sprintf('%g',res.res{i}.bayes1);
+    case 'bayes_dat'
+        if ~isempty(res.res{i}) && isfield(res.res{i},'bayes_dat')
+            f=sprintf('%g',res.res{i}.bayes_dat);
         end
-    case 'bayes2'
-        if ~isempty(res.res{i}) && isfield(res.res{i},'bayes2')
-            f=sprintf('%g',res.res{i}.bayes2);
+    case 'bayes_gibbs'
+        if ~isempty(res.res{i}) && isfield(res.res{i},'bayes_gibbs')
+            f=sprintf('%g',res.res{i}.bayes_gibbs);
         end
     case 'bayes_exact'
         if ~isempty(res.res{i}) && isfield(res.res{i},'bayes_exact')
@@ -5214,4 +5238,49 @@ function checkbox_multicore_Callback(hObject, eventdata, handles)
 
 if get(handles.checkbox_multicore,'value')>0
     open_parallel_pool
+end
+
+
+% --- Executes on selection change in popupmenu3.
+function popupmenu3_Callback(hObject, eventdata, handles)
+% hObject    handle to popupmenu3 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns popupmenu3 contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from popupmenu3
+
+
+% --- Executes during object creation, after setting all properties.
+function popupmenu3_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to popupmenu3 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in popupmenu_bayes_method.
+function popupmenu_bayes_method_Callback(hObject, eventdata, handles)
+% hObject    handle to popupmenu_bayes_method (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns popupmenu_bayes_method contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from popupmenu_bayes_method
+
+% --- Executes during object creation, after setting all properties.
+function popupmenu_bayes_method_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to popupmenu_bayes_method (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
 end

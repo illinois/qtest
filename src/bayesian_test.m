@@ -1,6 +1,6 @@
-function [p,D,bayes1,bayes2,sample]=bayesian_test(m,A,B,Aeq,Beq,ineq_idx,N_actual,N_burn,rstate,epsilon)
+function [p,D,bayes_dat,bayes_gibbs,sample]=bayesian_test(m,A,B,Aeq,Beq,ineq_idx,N_actual,N_burn,rstate,epsilon)
 %BAYESIAN_TEST performs various Bayesian tests
-%   [P,D,BAYES1,BAYES2,SAMPLE]=bayesian_test(M,A,B,AEQ,BEQ,INEQ_IDX,N_ACTUAL,N_BURN,RSTATE,EPSILON)
+%   [P,D,BAYES_DAT,BAYES_GIBBS,SAMPLE]=bayesian_test(M,A,B,AEQ,BEQ,INEQ_IDX,N_ACTUAL,N_BURN,RSTATE,EPSILON)
 %   
 %   M is the data matrix, where each row gives the outcome of a binomial
 %   test. For example, for a 3-dimensional case, with 20 observations per
@@ -21,7 +21,7 @@ function [p,D,bayes1,bayes2,sample]=bayesian_test(m,A,B,Aeq,Beq,ineq_idx,N_actua
 %   be used to create repeatable results.
 %
 %   EPSILON is optional. This is a value in the interval [0,0.5) such that
-%   all likelihood for computing BAYES2 will be constrained to within
+%   all likelihood for computing BAYES_GIBBS will be constrained to within
 %   the interval [EPSILON,(1-EPSILON)]. Default is 0.
 %
 % Outputs:
@@ -33,10 +33,10 @@ function [p,D,bayes1,bayes2,sample]=bayesian_test(m,A,B,Aeq,Beq,ineq_idx,N_actua
 %     D.complexity  -  gives the complexity penalty
 %     D.DIC  -  gives the DIC value
 %
-%   BAYES1 is the (unnormalized) Bayes factor computed with volume method.
+%   BAYES_DAT is the (unnormalized) Bayes factor computed with volume method.
 %   Caution: must not be used for non-full-rank models!
 %
-%   BAYES2 is the (unnormalized) Bayes factor computed with direct method.
+%   BAYES_GIBBS is the (unnormalized) Bayes factor computed with direct method.
 %   Caution: low-magnitude numbers -- use with care!
 %
 %   SAMPLE is a matrix containing the Gibbs samples for the posterior, one
@@ -60,8 +60,8 @@ end
 N=N_actual+N_burn;
 p=[];
 D=[];
-bayes1=[];
-bayes2=[];
+bayes_dat=[];
+bayes_gibbs=[];
 sample=[];
 %find valid starting point
 %options_lin=optimset('LargeScale','off','Simplex','off','Display','off');
@@ -167,7 +167,7 @@ prior_sample = rand(N,num_dim)';
 post_sample = betainv(rand(N,num_dim),ones(N,1)*(m(:,1)'+1),ones(N,1)*(m(:,2)'+1))';
 prior_vol = sum( (sum(A*prior_sample > B*ones(1,N),1) + sum(Aeq*prior_sample ~= Beq*ones(1,N),1))==0 )/N;
 post_vol = sum( (sum(A*post_sample > B*ones(1,N),1) + sum(Aeq*post_sample ~= Beq*ones(1,N),1))==0 )/N;
-bayes1 = post_vol/prior_vol;
+bayes_dat = post_vol/prior_vol;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Bayes factor (direct method)
@@ -192,5 +192,5 @@ for i=1:N
     prior_sample(i,:)=x;
 end
 prior_sample=max(min(prior_sample,1-epsilon),epsilon);
-bayes2 = mean(prod(prior_sample.^(ones(N,1)*(m(:,1)')),2).* ...
+bayes_gibbs = mean(prod(prior_sample.^(ones(N,1)*(m(:,1)')),2).* ...
     prod((1-prior_sample).^(ones(N,1)*(m(:,2)')),2));

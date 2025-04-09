@@ -1,5 +1,5 @@
 function generate_example_job
-%This example generates a job for computing Bayes factor 2
+%This example generates a job for computing Bayes factor using Gibbs Sampler
 % on all 49 CPT theories and all 40 subjects, each repeated 10 times (for
 % benchmarking purpose).
 %
@@ -14,7 +14,7 @@ CPT_level = 0.75;
 N = 10000; %sample size
 repetition = 10; %how many independent run for each analysis
 options = {'b2'}; %this is the option to bayesian_test_super indicating
-                    %that we want Bayes factor 2
+                    %that we want Bayes factor using Gibbs Sampler
 theory_path = 'BlacklightGUI/CPT/PredictedPatterns';
 subject_path = 'BlacklightGUI/CPT/Subjects';
                     

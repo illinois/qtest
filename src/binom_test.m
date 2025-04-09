@@ -21,12 +21,12 @@ function res=binom_test(m,A,B,Aeq,Beq,ineq_idx,options,N_actual,N_burn,rstate)
 %
 %   OPTIONS is a cell array specifying the tests to be run. Each array
 %   element should be one of the following strings:
-%       'b1' - indicates that Bayes factor 1 should be computed
-%       'b2' - indicates that Bayes factor 2 should be computed
+%       'b1' - indicates that Bayes factor using Draw and Test should be computed
+%       'b2' - indicates that Bayes factor using Gibbs Sampler should be computed
 %       'p'  - indicates that Bayesian p-value and DIC should be computed
 %       'f'  - indicates that frequentist p-value should be computed
 %       'nml'- indicates that NML should be computed
-%   Example: to compute Bayesian p and Bayes factor 2, OPTIONS should be
+%   Example: to compute Bayesian p and Bayes factor using Gibbs Sampler, OPTIONS should be
 %       { 'p', 'b2' }
 %   Note: Nothing will be computed if OPTIONS is left empty {}.
 %   WARNING: AEQ and BEQ will be assumed empty for 'b1' and 'f' regardless
@@ -50,8 +50,8 @@ function res=binom_test(m,A,B,Aeq,Beq,ineq_idx,options,N_actual,N_burn,rstate)
 % Outputs:
 %
 %   RES is a structure containing various test results:
-%       bayes1: Bayes factor 1
-%       bayes2: Bayes factor 2
+%       bayes_dat: Bayes factor using Draw and Test
+%       bayes_gibbs: Bayes factor using Gibbs Sampler
 %       p: Bayesian p-value
 %       DIC: DIC
 %       f: frequentist p-value
@@ -90,12 +90,12 @@ n=size(m,1); %dimension
 
 if ismember('b1',options) || ismember('B1',options)
     t_this=tic;
-    res.bayes1=bayes_factor_1(m,A,B,N_actual,rstate);
+    res.bayes_dat=bayes_factor_draw_and_test(m,A,B,N_actual,rstate);
     res.b1_time=toc(t_this);
 end
 if ismember('b2',options) || ismember('B2',options)
     t_this=tic;
-    res.bayes2=bayes_factor_2(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate);
+    res.bayes_gibbs=bayes_factor_gibbs(m,A,B,Aeq,Beq,ineq_idx,N_actual,rstate);
     res.b2_time=toc(t_this);
 end
 if ismember('p',options) || ismember('P',options)
