@@ -72,14 +72,8 @@ handles.data.sets={};
 handles.theories={};
 handles.results={};
 
-handles.spec.from_file.name={};
-handles.spec.from_file.path={};
-handles.spec.from_file.A=[];
-handles.spec.from_file.B=[];
-handles.spec.from_file.A_eq=[];
-handles.spec.from_file.B_eq=[];
-handles.spec.from_file.ineq_idx=[];
-handles.spec.from_file.vertices={};
+handles.spec.from_files = {};
+
 handles.spec.lambda=0.5;
 handles.spec.U_sup=0.5;
 handles.spec.U_city=0.5;
@@ -490,7 +484,7 @@ switch(get(hObject,'Tag'))
 end
 
 
-function [A,b,params,new_portahull,Aeq,beq,ineq_idx]=prob_spec(tag,t_i,handles,check_volume)
+function [A,b,params,new_portahull,Aeq,beq,ineq_idx]=prob_spec(tag,t_i,file_id,handles,check_volume)
 %compute matrices A and b for the inequalities in each probabilistic
 % specification
 new_portahull=[];
@@ -661,14 +655,14 @@ switch tag
     %case 'radiobutton_euclid'
     case 'radiobutton_from_file'
         params=[];
-        if isempty(handles.spec.from_file.name)
+        if isempty(handles.spec.from_files{file_id}.name)
             A=[]; b=[];
         else
-            A={handles.spec.from_file.A};
-            b={handles.spec.from_file.B};
-            Aeq={handles.spec.from_file.A_eq};
-            beq={handles.spec.from_file.B_eq};
-            ineq_idx=handles.spec.from_file.ineq_idx;
+            A={handles.spec.from_files{file_id}.A};
+            b={handles.spec.from_files{file_id}.B};
+            Aeq={handles.spec.from_files{file_id}.A_eq};
+            beq={handles.spec.from_files{file_id}.B_eq};
+            ineq_idx=handles.spec.from_files{file_id}.ineq_idx;
         end
     case 'radiobutton_from_porta'
         params=[];
@@ -720,10 +714,14 @@ function pushbutton_load_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 [file,path]=uigetfile({'*.*','All Files'},'Load Data');
+if ~strcmp(file(end-3:end), '.mat')
+    msgbox('Invalid file. Please select a .mat file.', 'Error', 'modal');
+    return;
+end
+
 if file~=0
     f=load([path,file]);
-    if ~isfield(f,'qtest_version') || (~isequal(f.qtest_version,'0.3') ...
-            && ~isequal(f.qtest_version,'1.0'))
+    if ~isfield(f,'qtest_version') || ~isequal(f.qtest_version,'1.1')
         msgbox('Invalid file or wrong version.','Error','modal');
         return;
     end
@@ -780,15 +778,6 @@ if file~=0
             end
         end
     end
-    if ~isfield(handles.spec.from_file,'A_eq')
-        handles.spec.from_file.A_eq=[];
-        handles.spec.from_file.B_eq=[];
-        if isempty(handles.spec.from_file.name)
-            handles.spec.from_file.ineq_idx=[];
-        else
-            handles.spec.from_file.ineq_idx=1:size(handles.spec.from_file.A,2);
-        end
-    end
     handles.results=f.handles.results;
     guidata(hObject, handles);
     update_ref_vol(handles);
@@ -804,33 +793,39 @@ if file~=0
     set(handles.edit_N,'string',sprintf('%i',handles.spec.N));
     set(handles.edit_rstate,'string',sprintf('%i',handles.spec.rstate));
     set(handles.pushbutton_M,'string',sprintf('%g',handles.spec.data_M));
-    set(handles.edit_spec_file,'string',handles.spec.from_file.name);
+    if ~isempty(handles.spec.from_files)
+        file_names = cellfun(@(x) x.name, handles.spec.from_files, 'UniformOutput', false);
+        set(handles.edit_spec_file, 'string', file_names);
+    else
+        set(handles.edit_spec_file, 'string', '');
+    end
     set(handles.edit_gibbs_size,'string',sprintf('%i',handles.spec.gibbs_size));
     set(handles.edit_gibbs_burn,'string',sprintf('%i',handles.spec.gibbs_burn));
     
-    if ~isempty(handles.spec.from_file.name)
-        if isfield(handles.spec.from_file,'path') && ...
-                ~isempty(handles.spec.from_file.path)
-             [from_file,msg]=load_spec_file(handles.spec.from_file.name, ...
-                 handles.spec.from_file.path, handles);
-             if ~isempty(from_file)
-                 if ~isequal(from_file.A,handles.spec.from_file.A) || ...
-                         ~isequal(from_file.B,handles.spec.from_file.B) || ...
-                         ~isequal(from_file.A_eq,handles.spec.from_file.A_eq) || ...
-                         ~isequal(from_file.B_eq,handles.spec.from_file.B_eq) || ...
-                         ~isequal(from_file.ineq_idx,handles.spec.from_file.ineq_idx) || ...
-                         ~isequal(from_file.vertices,handles.spec.from_file.vertices)
-                     btn=questdlg(['QTEST has found a valid mixture specification file ', ...
-                         sprintf('at %s with different contents, ',[path,file]), ...
-                         'would you like to re-load the specifications from this file?'], ...
-                         'Reload mixture specification','Yes','No','Yes');
-                     if isequal(btn,'Yes')
-                         handles.spec.from_file=from_file;
-                         guidata(hObject,handles);
-                         set(handles.edit_spec_file,'string',handles.spec.from_file.name);
-                     end
-                 end
-             end
+    if ~isempty(handles.spec.from_files)
+        for i = 1:length(handles.spec.from_files)
+            if isfield(handles.spec.from_files{i}, 'path') && ...
+                    ~isempty(handles.spec.from_files{i}.path)
+                [from_file, msg] = load_spec_file(handles.spec.from_files{i}.name, ...
+                    handles.spec.from_files{i}.path, handles);
+                if ~isempty(from_file)
+                    if ~isequal(from_file.A, handles.spec.from_files{i}.A) || ...
+                            ~isequal(from_file.B, handles.spec.from_files{i}.B) || ...
+                            ~isequal(from_file.A_eq, handles.spec.from_files{i}.A_eq) || ...
+                            ~isequal(from_file.B_eq, handles.spec.from_files{i}.B_eq) || ...
+                            ~isequal(from_file.ineq_idx, handles.spec.from_files{i}.ineq_idx) || ...
+                            ~isequal(from_file.vertices, handles.spec.from_files{i}.vertices)
+                        btn = questdlg(['QTEST has found a valid mixture specification file ', ...
+                            sprintf('at %s with different contents, ', [handles.spec.from_files{i}.path, handles.spec.from_files{i}.name]), ...
+                            'would you like to re-load the specifications from this file?'], ...
+                            'Reload mixture specification', 'Yes', 'No', 'Yes');
+                        if isequal(btn, 'Yes')
+                            handles.spec.from_files{i} = from_file;
+                            guidata(hObject, handles);
+                        end
+                    end
+                end
+            end
         end
     end
 end
@@ -850,7 +845,7 @@ h_spec_btn=get(handles.uipanel_run_spec,'SelectedObject');
 h_theory_btn=get(handles.uipanel_run_theory,'SelectedObject');
 h_type_btn=get(handles.uipanel_run_type,'SelectedObject');
 if isempty(handles.theories)
-    if isempty(handles.spec.from_file.name)
+    if isempty(handles.spec.from_files)
         if h_btn==handles.radiobutton_from_file && ...
                 h_spec_btn==handles.radiobutton_run_sel_spec
             msgbox('Please load specification file first.','Error','modal');
@@ -869,7 +864,7 @@ if isempty(handles.theories)
 else
     if h_btn==handles.radiobutton_from_file && ...
             h_spec_btn==handles.radiobutton_run_sel_spec && ...
-            isempty(handles.spec.from_file.name)
+            isempty(handles.spec.from_files)
         msgbox('Please load specification file first.','Error','modal');
         return;
     end        
@@ -904,17 +899,17 @@ else
             spec_list=[spec_list; handles.radiobutton_borda];
         end
         if h_theory_btn~=handles.radiobutton_run_sel_theory ... %all theories
-                && ~isempty(handles.spec.from_file.name)
+                && ~isempty(handles.spec.from_files)
             spec_list=[spec_list; handles.radiobutton_from_file];
         end
     end
 end
 if spec_list==handles.radiobutton_from_file
-    t_i_range=0;
+    t_i_range=zeros(1, length(handles.spec.from_files));
 elseif h_theory_btn==handles.radiobutton_run_sel_theory
     t_i_range=get(handles.listbox_theories,'value');
 elseif spec_list(end)==handles.radiobutton_from_file
-    t_i_range=[(1:length(handles.theories)),0];
+    t_i_range=[(1:length(handles.theories)), zeros(1, length(handles.spec.from_files))];
 else
     t_i_range=1:length(handles.theories);
 end
@@ -939,20 +934,17 @@ for t_i=t_i_range
         for data_idx=data_range
             for test_i=1:3
                 if test_i==1 %frequentist test
-                    if h_type_btn~=handles.radiobutton_type_frequentist && ...
-                            h_type_btn~=handles.radiobutton_type_all
+                    if h_type_btn~=handles.radiobutton_type_frequentist
                        continue; 
                     end
                     total_test=total_test+1;
                 elseif test_i==2 %bayes factor
-                    if h_type_btn~=handles.radiobutton_type_bayesian && ...
-                            h_type_btn~=handles.radiobutton_type_all
+                    if h_type_btn~=handles.radiobutton_type_bayesian
                         continue;
                     end
                     total_test=total_test+1;
                 else
-                    if h_type_btn~=handles.radiobutton_type_bayes_p && ...
-                        h_type_btn~=handles.radiobutton_type_all
+                    if h_type_btn~=handles.radiobutton_type_bayes_p
                         continue;
                     end
                     total_test=total_test+1;
@@ -965,7 +957,7 @@ end
 warn_res=cell(total_test,1);
 err_res=cell(total_test,1);
 test_list=cell(total_test,1);
-test_details=zeros(total_test,4);
+test_details=zeros(total_test,5);
 test_idx=0;
 spec_tags=cell(length(spec_list),1);
 spec_strings=cell(length(spec_list),1);
@@ -973,6 +965,7 @@ for s_i=1:length(spec_list)
     spec_tags{s_i}=get(spec_list(s_i),'Tag');
     spec_strings{s_i}=get(spec_list(s_i),'String');
 end
+file_id = 1;
 for t_i=t_i_range
     for s_i=1:length(spec_list)
         h_btn=spec_list(s_i);
@@ -983,19 +976,22 @@ for t_i=t_i_range
             theory_txt=handles.theories{t_i}.name;
             spec_txt=get(h_btn,'String');
         else
-            theory_txt=handles.spec.from_file.name;
+            if file_id>length(handles.spec.from_files)
+                % error
+                msgbox('Error: No more files to process.','Error','modal');
+            end
+            theory_txt=handles.spec.from_files{file_id}.name;
             spec_txt='Random preference'; %'Mixture-based'
+            file_id = file_id + 1;
         end
         for test_i=1:3
             if test_i==1 %frequentist test
-                if h_type_btn~=handles.radiobutton_type_frequentist && ...
-                        h_type_btn~=handles.radiobutton_type_all
+                if h_type_btn~=handles.radiobutton_type_frequentist
                     continue;
                 end
                 test_txt='Frequentist';
             elseif test_i==2 %bayes factor
-                if h_type_btn~=handles.radiobutton_type_bayesian && ...
-                        h_type_btn~=handles.radiobutton_type_all
+                if h_type_btn~=handles.radiobutton_type_bayesian
                     continue;
                 end
                 selected_method = get(handles.popupmenu_bayes_method, 'Value');
@@ -1009,8 +1005,7 @@ for t_i=t_i_range
                 end
                 test_txt = sprintf('Bayes factor using (%s)', method_description);
             else
-                if h_type_btn~=handles.radiobutton_type_bayes_p && ...
-                        h_type_btn~=handles.radiobutton_type_all
+                if h_type_btn~=handles.radiobutton_type_bayes_p
                     continue;
                 end
                 test_txt='Bayes p & DIC';
@@ -1028,7 +1023,7 @@ for t_i=t_i_range
                 test_list{test_idx}=sprintf('%d/%d ... %s ... %s ... %s ... %s ...', ...
                     test_idx,total_test,theory_txt, ...
                     spec_txt,test_txt,data_txt);
-                test_details(test_idx,:)=[t_i,s_i,test_i,data_idx];
+                test_details(test_idx,:)=[t_i,s_i,test_i,file_id-1, data_idx];
             end
         end
     end
@@ -1058,10 +1053,10 @@ else
     set(h_list,'String',test_list);
 end
 %go through tests
-test_groups=unique(test_details(:,1:3),'rows','stable');
+test_groups=unique(test_details(:,1:4),'rows','stable');
 total_test_count=0;
 for tg_i=1:size(test_groups,1)
-    idx=find( sum( ones(total_test,1)*test_groups(tg_i,:) == test_details(:,1:3), 2)==3  );
+    idx=find( sum( ones(total_test,1)*test_groups(tg_i,:) == test_details(:,1:4), 2)==4  );
     this_test_details=test_details(idx, :);
     this_total_test=size(this_test_details,1);
     this_warn_res=cell(this_total_test,1);
@@ -1086,24 +1081,25 @@ for tg_i=1:size(test_groups,1)
             t_i=ttd(1);
             s_i=ttd(2);
             test_i=ttd(3);
-            data_idx=ttd(4);
+            file_id=ttd(4);
+            data_idx=ttd(5);
             if test_i==1 %frequentist test
-                [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             elseif test_i==2 %bayes factor
                 [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
             else
-                [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             end
             if ~isempty(new_portahull)
                 this_new_portahull{test_count}=new_portahull;
             end
             if ~isempty(res)
                 if handles.options.check_regions>0
-                    [res.outside,res.overlap]=check_regions(t_i,spec_tags{s_i},handles,check_volume);
+                    [res.outside,res.overlap]=check_regions(t_i,spec_tags{s_i},file_id,handles,check_volume);
                 else
                     %res.outside=0; res.overlap=0;
                 end
-                res_hard(test_count) = check_hard_constraints(t_i,spec_tags{s_i},handles,check_volume);
+                res_hard(test_count) = check_hard_constraints(t_i,spec_tags{s_i},file_id,handles,check_volume);
                 res.hard_constraint = res_hard(test_count);
             end
             if isempty(res)
@@ -1112,7 +1108,7 @@ for tg_i=1:size(test_groups,1)
                     this_err_res{test_count}.name=handles.theories{t_i}.name;
                     this_err_res{test_count}.spec=spec_strings{s_i};
                 else
-                    this_err_res{test_count}.name=handles.spec.from_file.name;
+                    this_err_res{test_count}.name=handles.spec.from_files{file_id}.name;
                     this_err_res{test_count}.spec='Random preference'; %'Mixture-based'
                 end
             else
@@ -1175,24 +1171,25 @@ for tg_i=1:size(test_groups,1)
             t_i=ttd(1);
             s_i=ttd(2);
             test_i=ttd(3);
-            data_idx=ttd(4);
+            file_id=ttd(4);
+            data_idx=ttd(5);
             if test_i==1 %frequentist test
-                [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             elseif test_i==2 %bayes factor
                 [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
             else
-                [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             end
             if ~isempty(new_portahull)
                 handles.theories{new_portahull.t_i}.portahull = new_portahull.phull;
             end
             if ~isempty(res)
                 if handles.options.check_regions>0
-                    [res.outside,res.overlap]=check_regions(t_i,spec_tags{s_i},handles,check_volume);
+                    [res.outside,res.overlap]=check_regions(t_i,spec_tags{s_i},file_id,handles,check_volume);
                 else
                     %res.outside=0; res.overlap=0;
                 end
-                res_hard = check_hard_constraints(t_i,spec_tags{s_i},handles,check_volume);
+                res_hard = check_hard_constraints(t_i,spec_tags{s_i},file_id,handles,check_volume);
                 res.hard_constraint = res_hard;
             end
             if isempty(res)
@@ -1201,7 +1198,7 @@ for tg_i=1:size(test_groups,1)
                     this_err_res{test_count}.name=handles.theories{t_i}.name;
                     this_err_res{test_count}.spec=spec_strings{s_i};
                 else
-                    this_err_res{test_count}.name=handles.spec.from_file.name;
+                    this_err_res{test_count}.name=handles.spec.from_files{file_id}.name;
                     this_err_res{test_count}.spec='Random preference'; %'Mixture-based'
                 end
             else
@@ -1335,7 +1332,12 @@ end
 warn_res=[];
 for t_i=all_t_i
     for h_btn=all_h_btn
-        [outside,overlap]=check_regions(t_i,get(h_btn,'Tag'),handles,get(handles.checkbox_volume,'value'));
+        % Venky-Fix - check the usage
+        if isequal(get(h_btn,'Tag'),'radiobutton_from_file')
+            msgbox('Check region for file - Unhandled','Error','modal');
+            return;
+        end
+        [outside,overlap]=check_regions(t_i,get(h_btn,'Tag'), -1,handles,get(handles.checkbox_volume,'value'));
         if outside || overlap
             warn_res=[warn_res; outside,overlap,t_i,h_btn];
         end
@@ -1391,10 +1393,10 @@ while 1
     break;
 end
 
-function h = check_hard_constraints(t_i,tag,handles,check_volume)
+function h = check_hard_constraints(t_i,tag,file_id,handles,check_volume)
 h=0;
 if isequal(tag,'radiobutton_from_porta') || isequal(tag,'radiobutton_from_file')
-    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,handles,check_volume);
+    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,handles,check_volume);
     %must have only 1 polytope!
     if isempty(A_all) || isempty(A_all{1})
         return;
@@ -1437,7 +1439,7 @@ end
 
 
 
-function [outside,overlap]=check_regions(t_i,tag,handles,check_volume)
+function [outside,overlap]=check_regions(t_i,tag,file_id,handles,check_volume)
 %check for overlapping and/or out-of-box regions
 % on vertices of theory t_i with respect to
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
@@ -1498,7 +1500,7 @@ if isequal(tag,'radiobutton_euclid')
         if overlap; break; end
     end
 else
-    [A_all,b_all,params]=prob_spec(tag,t_i,handles,check_volume);
+    [A_all,b_all,params]=prob_spec(tag,t_i,file_id,handles,check_volume);
     if isempty(A_all)
         return;
     end
@@ -1561,7 +1563,7 @@ if isequal(tag,'radiobutton_euclid')
     msg='Bayesian test for the Euclidean distance specification currently not supported';
     return;
 else
-    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,handles,check_volume);
+    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,handles,check_volume);
     if isempty(A_all)
         msg='No valid vertex/probabilistic specification';
         return;
@@ -1579,7 +1581,7 @@ else
 
     res.type='bayes_factor';
     if isequal(tag,'radiobutton_from_file')
-        res.theory.name=handles.spec.from_file.name;
+        res.theory.name=handles.spec.from_files{file_id}.name;
     else
         res.theory=handles.theories{t_i};
     end
@@ -1712,7 +1714,7 @@ else
 end
 
 
-function [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,tag,set_idx,handles,check_volume,multicore)
+function [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,tag,file_id,set_idx,handles,check_volume,multicore)
 %performs bayesian test on theory t_i and
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
 res=[]; msg=[]; new_portahull=[]; user_cancel=0;
@@ -1728,7 +1730,7 @@ if isequal(tag,'radiobutton_euclid')
     msg='Bayesian test for the Euclidean distance specification currently not supported';
     return;
 else
-    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,handles,check_volume);
+    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,handles,check_volume);
     if isempty(A_all)
         msg='No valid vertex/probabilistic specification';
         return;
@@ -1746,7 +1748,7 @@ else
 
     res.type='bayes_p';
     if isequal(tag,'radiobutton_from_file')
-        res.theory.name=handles.spec.from_file.name;
+        res.theory.name=handles.spec.from_files{file_id}.name;
     else
         res.theory=handles.theories{t_i};
     end
@@ -1922,7 +1924,7 @@ wres.D.DIC= wres.D.GOF + wres.D.complexity; %DIC
 
 
 
-function [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,tag,set_idx,handles,check_volume,multicore)
+function [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,tag,file_id,set_idx,handles,check_volume,multicore)
 %performs a single hypothesis test on theory t_i and
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
 res=[]; msg=[]; new_portahull=[]; user_cancel=0;
@@ -2003,7 +2005,7 @@ if isequal(tag,'radiobutton_euclid')
         res.res{i}.n_done=n_done;
     end
 else
-    [A_all,b_all,params,new_portahull,A_eq,b_eq]=prob_spec(tag,t_i,handles,check_volume);
+    [A_all,b_all,params,new_portahull,A_eq,b_eq]=prob_spec(tag,t_i,file_id,handles,check_volume);
     if isempty(A_all)
         msg='No valid vertex/probabilistic specification';
         return;
@@ -2025,7 +2027,7 @@ else
 
     res.type='frequentist';
     if isequal(tag,'radiobutton_from_file')
-        res.theory.name=handles.spec.from_file.name;
+        res.theory.name=handles.spec.from_files{file_id}.name;
     else
         res.theory=handles.theories{t_i};
     end
@@ -2131,7 +2133,7 @@ function pushbutton_save_Callback(hObject, eventdata, handles_ori)
 % handles    structure with handles and user data (see GUIDATA)
 [file,path]=uiputfile('*.mat','Save Data As');
 if file~=0
-    qtest_version='1.0';
+    qtest_version='1.1';
     try
         handles.gambles=handles_ori.gambles;
         handles.spec=handles_ori.spec;
@@ -2616,10 +2618,10 @@ if h_btn~=handles.radiobutton_from_file
             'color',[.1 .1 .5],'fontweight','bold');
     end
 else
-    for v_i=1:size(handles.spec.from_file.vertices,1)
-        vert=handles.spec.from_file.vertices{v_i,1};
+    for v_i=1:size(handles.spec.from_files{1}.vertices,1)
+        vert=handles.spec.from_files{1}.vertices{v_i,1};
         text(vert(1),vert(2),vert(3), ...
-            handles.spec.from_file.vertices{v_i,2}, ...
+            handles.spec.from_file{1}.vertices{v_i,2}, ...
             'color',[.1 .1 .5],'fontweight','bold');
     end
 end
@@ -2685,14 +2687,7 @@ if ~isempty(handles)
     handles.data.pairs=[handles.gambles.pairs,0.5*ones(n,1)];
     handles.data.M={};
     handles.data.sets={};
-    handles.spec.from_file.name={};
-    handles.spec.from_file.path={};
-    handles.spec.from_file.A=[];
-    handles.spec.from_file.B=[];
-    handles.spec.from_file.A_eq=[];
-    handles.spec.from_file.B_eq=[];
-    handles.spec.from_file.ineq_idx=[];
-    handles.spec.from_file.vertices={};
+    handles.spec.from_files={};
     guidata(handles.mother_figure,handles);
     set(handles.edit_spec_file,'string','');
     update_pairs_list(handles);
@@ -2734,14 +2729,7 @@ handles.theories={};
 handles.data.pairs=[];
 handles.data.M={};
 handles.data.sets={};
-handles.spec.from_file.name={};
-handles.spec.from_file.path={};
-handles.spec.from_file.A=[];
-handles.spec.from_file.B=[];
-handles.spec.from_file.A_eq=[];
-handles.spec.from_file.B_eq=[];
-handles.spec.from_file.ineq_idx=[];
-handles.spec.from_file.vertices={};
+handles.spec.from_files={};
 guidata(hObject,handles);
 set(handles.edit_spec_file,'string','');
 update_pairs_list(handles);
@@ -2770,14 +2758,7 @@ n=size(handles.gambles.pairs,1);
 handles.data.pairs=[handles.gambles.pairs,0.5*ones(n,1)];
 handles.data.M={};
 handles.data.sets={};
-handles.spec.from_file.name={};
-handles.spec.from_file.path={};
-handles.spec.from_file.A=[];
-handles.spec.from_file.B=[];
-handles.spec.from_file.A_eq=[];
-handles.spec.from_file.B_eq=[];
-handles.spec.from_file.ineq_idx=[];
-handles.spec.from_file.vertices={};
+handles.spec.from_files={};
 guidata(hObject,handles);
 set(handles.edit_spec_file,'string','');
 update_pairs_list(handles);
@@ -3390,17 +3371,34 @@ function pushbutton_load_spec_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton_load_spec (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[file,path]=uigetfile({'*.*','All Files'},'Load Specification');
-if file~=0
-    [from_file,msg]=load_spec_file(file,path,handles);
-    if isempty(from_file)
-        msgbox(msg,'Error','modal');
-    else
-        handles.spec.from_file=from_file;
-        guidata(hObject,handles);
-        set(handles.edit_spec_file,'string',file);
-        set(handles.uipanel_prob_spec,'SelectedObject',handles.radiobutton_from_file);
+[files, path] = uigetfile({'*.*', 'All Files'}, 'Load Specification', 'MultiSelect', 'on');
+if isequal(files, 0) || isempty(files)
+    return; % User canceled the file selection
+end
+
+if iscell(files) || ischar(files) % Check if multiple files or a single file is selected
+    if ischar(files)
+        files = {files}; % Convert single file to cell array for consistency
     end
+    success = true;
+    from_files = {};
+    for i = 1:length(files)
+        file = files{i};
+        [from_file, msg] = load_spec_file(file, path, handles);
+        if isempty(from_file)
+            msgbox(sprintf('Error loading file: %s\n%s', file, msg), 'Error', 'modal');
+            success = false;
+        else
+            from_files{i} = from_file;
+        end
+    end
+    if ~success
+        return; % If any file failed to load, exit the function
+    end
+    handles.spec.from_files = from_files;
+    guidata(hObject, handles);
+    set(handles.edit_spec_file, 'string', files);
+    set(handles.uipanel_prob_spec, 'SelectedObject', handles.radiobutton_from_file);
 end
 
 function edit_spec_file_Callback(hObject, eventdata, handles)
