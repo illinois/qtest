@@ -1682,7 +1682,7 @@ else
                         handles.spec.gibbs_size, handles.spec.rstate);
                     res.res{i}.bayes_dat=bayes_dat;
 
-                    if isempty(res.res{i}.bayes_gibbs)
+                    if isempty(res.res{i}.bayes_dat)
                         res=[];
                         msg='Infeasible data point (probability zero?)';
                         return;
