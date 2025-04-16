@@ -1086,7 +1086,7 @@ for tg_i=1:size(test_groups,1)
             if test_i==1 %frequentist test
                 [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             elseif test_i==2 %bayes factor
-                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             else
                 [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             end
@@ -1176,7 +1176,7 @@ for tg_i=1:size(test_groups,1)
             if test_i==1 %frequentist test
                 [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             elseif test_i==2 %bayes factor
-                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             else
                 [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             end
@@ -1547,7 +1547,7 @@ else
     end
 end
 
-function [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,tag,set_idx,handles,check_volume,multicore)
+function [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,tag,file_id,set_idx,handles,check_volume,multicore)
 %performs bayes factor (bayes_gibbs) test on theory t_i and
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
 res=[]; msg=[]; new_portahull=[]; user_cancel=0;
