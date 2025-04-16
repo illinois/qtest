@@ -32,6 +32,19 @@ fi
 INSTALLER_SIGNING_IDENTITY="Developer ID Installer: University of Illinois at Urbana-Champaign (UPV4CB4H6W)"
 APP_SIGNING_IDENTITY="Developer ID Application: University of Illinois at Urbana-Champaign (UPV4CB4H6W)"
 
+# Check if APP_SIGNING_IDENTITY certificate is installed
+if ! security find-certificate -c "$APP_SIGNING_IDENTITY" &> /dev/null; then
+    echo "Error: Certificate for $APP_SIGNING_IDENTITY not found. Install them first."
+    exit 1
+fi
+
+# Check if INSTALLER_SIGNING_IDENTITY certificate is installed
+if ! security find-certificate -c "$INSTALLER_SIGNING_IDENTITY" &> /dev/null; then
+    echo "Error: Certificate for $INSTALLER_SIGNING_IDENTITY not found. Install them first."
+    exit 1
+fi
+
+
 APP_UNIQUE_ID="edu.illinois.psychology.qtest"
 ENTITLEMENTS_FILE="entitlements.plist"
 ENTITLEMENTS_PATH="$SCRIPT_PATH/$ENTITLEMENTS_FILE"

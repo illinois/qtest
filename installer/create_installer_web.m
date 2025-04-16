@@ -21,8 +21,10 @@ function main()
 
         disp('Signing dependencies');
         command = fullfile(currentFileDir, 'mac_signing', 'prebuild.sh');
-        [status, cmdout] = system(command); 
-        disp(cmdout);
+        [status, cmdout] = system(command,'-echo');
+        if status ~= 0
+            error('Error during prebuild.sh execution: %s', cmdout);
+        end
     end
 
     if ispc        
@@ -34,7 +36,10 @@ function main()
         loadenv(envFilePath);
         disp('Signing dependencies');
         command = fullfile(currentFileDir, 'windows_signing', 'prebuild.bat');
-        system(command,'-echo');
+        [status, cmdout] = system(command,'-echo');
+        if status ~= 0
+            error('Error during prebuild.bat execution: %s', cmdout);
+        end
     end
 
     % Compile MATLAB code
@@ -43,17 +48,24 @@ function main()
     if ismac
         disp('Signing application');
         command = fullfile(currentFileDir, 'mac_signing', 'prepackaging.sh');
-        [status, cmdout] = system(command); 
-        disp(cmdout);
+        [status, cmdout] = system(command,'-echo');
+        if status ~= 0
+            error('Error during prepackaging.sh execution: %s', cmdout);
+        end
 
         disp('Creating installer');
         command = fullfile(currentFileDir, 'mac_signing', 'postpackaging.sh');
-        [status, cmdout] = system(command); 
-        disp(cmdout);
+        [status, cmdout] = system(command,'-echo');
+        if status ~= 0
+            error('Error during postpackaging.sh execution: %s', cmdout);
+        end
     else 
         disp('Signing application');
         command = fullfile(currentFileDir, 'windows_signing', 'prepackaging.bat');
-        system(command,'-echo');
+        [status, cmdout] = system(command,'-echo')
+        if status ~= 0
+            error('Error during prepackaging.bat execution: %s', cmdout);
+        end
 
         disp('Creating installer');
         % Package the application
@@ -61,8 +73,10 @@ function main()
 
         disp('Signing installer');
         command = fullfile(currentFileDir, 'windows_signing', 'postpackaging.bat');
-        system(command,'-echo');
-        
+        [status, cmdout] = system(command,'-echo')
+        if status ~= 0
+            error('Error during postpackaging.bat execution: %s', cmdout);
+        end
     end
 
     disp('Installer creation done');
