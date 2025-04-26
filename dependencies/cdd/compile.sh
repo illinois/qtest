@@ -1,3 +1,5 @@
+# This is for mac platform
+# see compile.bat for windows
 # Commands used to compile cddlib with and without gmp support
 
 git clone https://github.com/cddlib/cddlib
