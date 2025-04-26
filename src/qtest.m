@@ -2268,6 +2268,13 @@ if isempty(handles.theories) && h_btn~=handles.radiobutton_from_file
     msgbox('Please create a theory first.','Error','modal');
     return;
 end
+if h_btn == handles.radiobutton_from_file
+    if length(handles.spec.from_files) > 1
+        msgbox('More than one specification file is not supported.','Error','modal');
+        return;
+    end
+end
+
 col_scheme=get(handles.popupmenu_color,'value');
 col_map=[0,0,0; ...
     1,0.5,0.5; 0.5,1,0.5; 0.5,0.5,1; ...
@@ -2351,7 +2358,7 @@ if h_btn==handles.radiobutton_euclid
         plot3(x_rng,y_rng,z_rng,'k-');
     end
 elseif h_btn==handles.radiobutton_sup || h_btn==handles.radiobutton_major
-    [A_all,b_all]=prob_spec(get(h_btn,'Tag'),t_i,handles,get(handles.checkbox_volume,'value'));
+    [A_all,b_all]=prob_spec(get(h_btn,'Tag'),t_i,1,handles,get(handles.checkbox_volume,'value'));
     if isempty(A_all); return; end
     has_valid=0;
     for i=1:length(A_all)
@@ -2486,7 +2493,7 @@ elseif h_btn==handles.radiobutton_from_porta
     hold on;
     
 else
-    [A_all,b_all,~,~,Aeq,Beq]=prob_spec(get(h_btn,'Tag'),t_i,handles,get(handles.checkbox_volume,'value'));
+    [A_all,b_all,~,~,Aeq,Beq]=prob_spec(get(h_btn,'Tag'),t_i,1,handles,get(handles.checkbox_volume,'value'));
     if isempty(A_all); return; end
     has_valid=0;
     for i=1:length(A_all)
