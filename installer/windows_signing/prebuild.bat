@@ -40,8 +40,7 @@ call :check_command_status "unzip microsoft.trusted.signing.client.1.0.76.zip"
 
 
 REM Define files to sign
-set FILES_TO_SIGN=portamex.mexw64 portavmex.mexw64
-@REM set FILES_TO_SIGN=portamex.mexw64
+set FILES_TO_SIGN=portamex.mexw64 portavmex.mexw64 cddgmpmex.mexw64 cddmex.mexw64
 
 REM Function to check the exit status of commands
 :check_command_status
