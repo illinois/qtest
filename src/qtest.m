@@ -2268,6 +2268,13 @@ if isempty(handles.theories) && h_btn~=handles.radiobutton_from_file
     msgbox('Please create a theory first.','Error','modal');
     return;
 end
+if h_btn == handles.radiobutton_from_file
+    if length(handles.spec.from_files) > 1
+        msgbox('More than one specification file is not supported.','Error','modal');
+        return;
+    end
+end
+
 col_scheme=get(handles.popupmenu_color,'value');
 col_map=[0,0,0; ...
     1,0.5,0.5; 0.5,1,0.5; 0.5,0.5,1; ...
@@ -2351,7 +2358,7 @@ if h_btn==handles.radiobutton_euclid
         plot3(x_rng,y_rng,z_rng,'k-');
     end
 elseif h_btn==handles.radiobutton_sup || h_btn==handles.radiobutton_major
-    [A_all,b_all]=prob_spec(get(h_btn,'Tag'),t_i,handles,get(handles.checkbox_volume,'value'));
+    [A_all,b_all]=prob_spec(get(h_btn,'Tag'),t_i,1,handles,get(handles.checkbox_volume,'value'));
     if isempty(A_all); return; end
     has_valid=0;
     for i=1:length(A_all)
@@ -2486,7 +2493,7 @@ elseif h_btn==handles.radiobutton_from_porta
     hold on;
     
 else
-    [A_all,b_all,~,~,Aeq,Beq]=prob_spec(get(h_btn,'Tag'),t_i,handles,get(handles.checkbox_volume,'value'));
+    [A_all,b_all,~,~,Aeq,Beq]=prob_spec(get(h_btn,'Tag'),t_i,1,handles,get(handles.checkbox_volume,'value'));
     if isempty(A_all); return; end
     has_valid=0;
     for i=1:length(A_all)
@@ -4630,7 +4637,7 @@ function pushbutton_about_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton_about (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-msg='QTEST 2.2.1';
+msg='QTEST 2.2.2';
 msg=[msg,sprintf('\n \nProgrammed by Shiau Hong Lim\n \n'), ...
     sprintf('QTEST uses PORTA by Thomas Christof and Andreas Loebel.\n \n'), ...
     'This program was developed with support by the National', ...
