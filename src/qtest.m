@@ -101,6 +101,8 @@ set(handles.mother_figure,'Name','QTEST');
 % Choose default command line output for qtest
 handles.output = hObject;
 
+handles.last_path = pwd;
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -713,7 +715,8 @@ function pushbutton_load_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uigetfile({'*.*','All Files'},'Load Data');
+[file,path]=uigetfile({'*.*','All Files'},'Load Data', handles.last_path);
+if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if ~strcmp(file(end-3:end), '.mat')
     msgbox('Invalid file. Please select a .mat file.', 'Error', 'modal');
     return;
@@ -873,7 +876,8 @@ autosave=0;
 if get(handles.checkbox_autosave,'value')>0
     [autosave_file,autosave_path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
         '*.csv','Comma separated values (*.csv)'; ...
-        '*.txt','Text files (*.txt)';'*.*','All Files'},'Auto Save Results As');
+        '*.txt','Text files (*.txt)';'*.*','All Files'},'Auto Save Results As', handles.last_path);
+if autosave_file~=0, handles.last_path = autosave_path; guidata(hObject, handles); end
     if autosave_file==0
         return;
     end
@@ -1037,7 +1041,7 @@ if isempty(handles.analysis_window) || ~ishandle(handles.analysis_window(1)) ...
     end
     fig_list=figure('NumberTitle','off','Name','Running Analysis',...
         'Menubar','none','DockControls','off', ...
-        'Units','character','WindowStyle','modal','CloseRequestFcn',@do_nothing);
+        'Units','character','WindowStyle','modal','CloseRequestFcn',@do_cancel);
     pos=get(fig_list,'Position'); pos(3)=max(100,min(300,30+max_len)); pos(4)=20;
     set(fig_list,'Position',pos);
     h_list=uicontrol(fig_list,'Style','listbox','String', ...
@@ -1049,7 +1053,7 @@ if isempty(handles.analysis_window) || ~ishandle(handles.analysis_window(1)) ...
 else
     fig_list=handles.analysis_window(1);
     h_list=handles.analysis_window(2);
-    set(fig_list,'Name','Running Analysis','WindowStyle','modal','CloseRequestFcn',@do_nothing);
+    set(fig_list,'Name','Running Analysis','WindowStyle','modal','CloseRequestFcn',@do_cancel);
     set(h_list,'String',test_list);
 end
 %go through tests
@@ -1166,6 +1170,10 @@ for tg_i=1:size(test_groups,1)
         for test_count=1:this_total_test
             set(h_list,'String',test_list,'Value',min(total_test,total_test_count+1),'ListBoxTop',max(1,total_test_count-5));
             drawnow;
+            if isappdata(fig_list,'user_requested_cancel') && getappdata(fig_list,'user_requested_cancel')==1
+                user_cancel=1;
+                break;
+            end
             tic
             ttd=this_test_details(test_count,:);
             t_i=ttd(1);
@@ -2131,7 +2139,8 @@ function pushbutton_save_Callback(hObject, eventdata, handles_ori)
 % hObject    handle to pushbutton_save (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[file,path]=uiputfile('*.mat','Save Data As');
+[file,path]=uiputfile('*.mat','Save Data As', handles.last_path);
+if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if file~=0
     qtest_version='1.1';
     try
@@ -3378,7 +3387,8 @@ function pushbutton_load_spec_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton_load_spec (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-[files, path] = uigetfile({'*.*', 'All Files'}, 'Load Specification', 'MultiSelect', 'on');
+[files, path] = uigetfile({'*.*', 'All Files'}, 'Load Specification', handles.last_path, 'MultiSelect', 'on');
+if ~isequal(files, 0), handles.last_path = path; guidata(hObject, handles); end
 if isequal(files, 0) || isempty(files)
     return; % User canceled the file selection
 end
@@ -3931,7 +3941,8 @@ function pushbutton_load_data_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uigetfile({'*.*','All Files'},'Load Observations');
+[file,path]=uigetfile({'*.*','All Files'},'Load Observations', handles.last_path);
+if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if file~=0
     if isequal(lower(file((end-3):end)),'.txt')
         fid=fopen([path,file],'rt');
@@ -4296,7 +4307,8 @@ function pushbutton_results_export_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 [file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; '*.csv','Comma separated values (*.csv)'; ...
-    '*.txt','Text files (*.txt)';'*.*','All Files'},'Export Results As');
+    '*.txt','Text files (*.txt)';'*.*','All Files'},'Export Results As', handles.last_path);
+if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if file~=0
     export_results(file,path,handles,0);
 end
@@ -4637,7 +4649,7 @@ function pushbutton_about_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton_about (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-msg='QTEST 2.2.3';
+msg='QTEST 2.2.4';
 msg=[msg,sprintf('\n \nProgrammed by Shiau Hong Lim\n \n'), ...
     sprintf('QTEST uses PORTA by Thomas Christof and Andreas Loebel.\n \n'), ...
     'This program was developed with support by the National', ...
@@ -4711,7 +4723,8 @@ function pushbutton_save_data_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 [file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
-    '*.txt','Text files (*.txt)';'*.*','All Files'},'Save Observations');
+    '*.txt','Text files (*.txt)';'*.*','All Files'},'Save Observations', handles.last_path);
+if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if file~=0
     try
         if isequal(lower(file((end-3):end)),'.txt')
@@ -4829,7 +4842,8 @@ if isempty(handles.gambles.pairs)
     return;
 end
 
-[file,path]=uigetfile({'*.*','All Files'},'Load Theory');
+[file,path]=uigetfile({'*.*','All Files'},'Load Theory', handles.last_path);
+if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if file~=0
     fid=fopen([path,file],'rt');
     try
@@ -4936,7 +4950,8 @@ if isempty(handles.theories{t_i}.vertices)
     return;
 end
 
-[file,path]=uiputfile({'*.csv','Comma separated values (*.csv)';'*.*','All Files'},'Save Theory');
+[file,path]=uiputfile({'*.csv','Comma separated values (*.csv)';'*.*','All Files'},'Save Theory', handles.last_path);
+if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if file~=0
     try
         fid=fopen([path,file],'wt');
@@ -5107,7 +5122,8 @@ for v_i=1:n_vert
 end
 
 [file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
-    '*.txt','Text files (*.txt)';'*.*','All Files'},'Save Specification');
+    '*.txt','Text files (*.txt)';'*.*','All Files'},'Save Specification', handles.last_path);
+if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if file~=0
     
     if ~isfield(handles.theories{t_i},'portahull') || ~isequal(handles.theories{t_i}.portahull.V,V)
@@ -5213,6 +5229,9 @@ end
 
 function do_nothing(src,evt)
 return;
+
+function do_cancel(src,evt)
+setappdata(src,'user_requested_cancel',1);
 
 function do_close(src,evt)
 delete(src);
