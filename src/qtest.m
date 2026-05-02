@@ -874,8 +874,8 @@ else
 end
 autosave=0;
 if get(handles.checkbox_autosave,'value')>0
-    [autosave_file,autosave_path]=uiputfile({'*.mat','MAT-files (*.mat)'; ...
-        '*.csv','Comma separated values (*.csv)'; ...
+    [autosave_file,autosave_path]=uiputfile({'*.csv','Comma separated values (*.csv)'; ...
+        '*.mat','MAT-files (*.mat)'; ...
         '*.txt','Text files (*.txt)';'*.*','All Files'},'Auto Save Results As', handles.last_path);
 if autosave_file~=0, handles.last_path = autosave_path; guidata(hObject, handles); end
     if autosave_file==0
@@ -1074,10 +1074,16 @@ for tg_i=1:size(test_groups,1)
     any_user_cancel=0;
     check_volume=get(handles.checkbox_volume,'value');
     multicore=get(handles.checkbox_multicore,'value');
+    selected_method=get(handles.popupmenu_bayes_method,'Value');
     if multicore>0
         set(h_list,'String',test_list,'Value',min(total_test,total_test_count+1),'ListBoxTop',max(1,total_test_count-5));
         drawnow;
         open_parallel_pool;
+        hdata.theories=handles.theories;
+        hdata.spec=handles.spec;
+        hdata.data=handles.data;
+        hdata.gambles=handles.gambles;
+        hdata.options=handles.options;
         res_hard=zeros(this_total_test,1);
         parfor test_count=1:this_total_test
             tic
@@ -1088,31 +1094,31 @@ for tg_i=1:size(test_groups,1)
             file_id=ttd(4);
             data_idx=ttd(5);
             if test_i==1 %frequentist test
-                [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},file_id,data_idx,hdata,check_volume,multicore);
             elseif test_i==2 %bayes factor
-                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},file_id,data_idx,hdata,check_volume,multicore,selected_method);
             else
-                [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},file_id,data_idx,hdata,check_volume,multicore);
             end
             if ~isempty(new_portahull)
                 this_new_portahull{test_count}=new_portahull;
             end
             if ~isempty(res)
-                if handles.options.check_regions>0
-                    [res.outside,res.overlap]=check_regions(t_i,spec_tags{s_i},file_id,handles,check_volume);
+                if hdata.options.check_regions>0
+                    [res.outside,res.overlap]=check_regions(t_i,spec_tags{s_i},file_id,hdata,check_volume);
                 else
                     %res.outside=0; res.overlap=0;
                 end
-                res_hard(test_count) = check_hard_constraints(t_i,spec_tags{s_i},file_id,handles,check_volume);
+                res_hard(test_count) = check_hard_constraints(t_i,spec_tags{s_i},file_id,hdata,check_volume);
                 res.hard_constraint = res_hard(test_count);
             end
             if isempty(res)
                 this_err_res{test_count}.msg=msg;
                 if t_i>0
-                    this_err_res{test_count}.name=handles.theories{t_i}.name;
+                    this_err_res{test_count}.name=hdata.theories{t_i}.name;
                     this_err_res{test_count}.spec=spec_strings{s_i};
                 else
-                    this_err_res{test_count}.name=handles.spec.from_files{file_id}.name;
+                    this_err_res{test_count}.name=hdata.spec.from_files{file_id}.name;
                     this_err_res{test_count}.spec='Random preference'; %'Mixture-based'
                 end
             else
@@ -1184,7 +1190,7 @@ for tg_i=1:size(test_groups,1)
             if test_i==1 %frequentist test
                 [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             elseif test_i==2 %bayes factor
-                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
+                [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore,selected_method);
             else
                 [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,spec_tags{s_i},file_id,data_idx,handles,check_volume,multicore);
             end
@@ -1401,10 +1407,10 @@ while 1
     break;
 end
 
-function h = check_hard_constraints(t_i,tag,file_id,handles,check_volume)
+function h = check_hard_constraints(t_i,tag,file_id,hdata,check_volume)
 h=0;
 if isequal(tag,'radiobutton_from_porta') || isequal(tag,'radiobutton_from_file')
-    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,handles,check_volume);
+    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,hdata,check_volume);
     %must have only 1 polytope!
     if isempty(A_all) || isempty(A_all{1})
         return;
@@ -1416,7 +1422,7 @@ if isequal(tag,'radiobutton_from_porta') || isequal(tag,'radiobutton_from_file')
         Aeq=A_eq{1};
         Beq=b_eq{1};
     end
-    n=size(handles.gambles.pairs,1);
+    n=size(hdata.gambles.pairs,1);
     cube_A=[eye(n); -eye(n)];
     cube_B=[ones(n,1); zeros(n,1)];
     A=[cube_A; A_all{1}];
@@ -1447,7 +1453,7 @@ end
 
 
 
-function [outside,overlap]=check_regions(t_i,tag,file_id,handles,check_volume)
+function [outside,overlap]=check_regions(t_i,tag,file_id,hdata,check_volume)
 %check for overlapping and/or out-of-box regions
 % on vertices of theory t_i with respect to
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
@@ -1456,16 +1462,16 @@ if isequal(tag,'radiobutton_from_porta')
     return;
 end
 if ~isequal(tag,'radiobutton_from_file')
-    n_vert=length(handles.theories{t_i}.vertices);
+    n_vert=length(hdata.theories{t_i}.vertices);
     if n_vert==0
         return;
     end
 end
 if isequal(tag,'radiobutton_euclid')
-    n=size(handles.gambles.pairs,1);
+    n=size(hdata.gambles.pairs,1);
     w_total=0;
     for v_i=1:n_vert
-        w_total=w_total+handles.theories{t_i}.vertices{v_i}.w;
+        w_total=w_total+hdata.theories{t_i}.vertices{v_i}.w;
     end
     if w_total==0 && check_volume>0
         return; 
@@ -1473,18 +1479,18 @@ if isequal(tag,'radiobutton_euclid')
     params=zeros(n_vert,1);
     for i=1:n_vert
         if check_volume>0
-            rvol_i=handles.theories{t_i}.vertices{i}.w/w_total;
+            rvol_i=hdata.theories{t_i}.vertices{i}.w/w_total;
             if rvol_i==0; continue; end
-            vert=handles.theories{t_i}.vertices{i}.pairs(:,3)';
+            vert=hdata.theories{t_i}.vertices{i}.pairs(:,3)';
             if all((vert==0)|(vert==1))                
-                U=exp( (log(rvol_i)+handles.spec.log_ref_vol-n/2*log(pi)+...
+                U=exp( (log(rvol_i)+hdata.spec.log_ref_vol-n/2*log(pi)+...
                     gammaln(n/2+1)+n*log(2))/n );
             else
-                U=search_volume('radiobutton_euclid',vert,exp(log(rvol_i)+handles.spec.log_ref_vol));
+                U=search_volume('radiobutton_euclid',vert,exp(log(rvol_i)+hdata.spec.log_ref_vol));
             end
         else
-            %U=rvol_i^(1/n)*handles.spec.U_euc;
-            U=handles.spec.U_euc;
+            %U=rvol_i^(1/n)*hdata.spec.U_euc;
+            U=hdata.spec.U_euc;
         end
         params(i)=U;
     end
@@ -1496,10 +1502,10 @@ if isequal(tag,'radiobutton_euclid')
     %overlap
     for i=1:n_vert
         if params(i)<=0; continue; end
-        vert_i=handles.theories{t_i}.vertices{i}.pairs(:,3)';
+        vert_i=hdata.theories{t_i}.vertices{i}.pairs(:,3)';
         for j=(i+1):n_vert
             if params(j)<=0; continue; end
-            vert_j=handles.theories{t_i}.vertices{j}.pairs(:,3)';
+            vert_j=hdata.theories{t_i}.vertices{j}.pairs(:,3)';
             if norm(vert_i-vert_j)<params(i)+params(j)
                 overlap=1;
                 break;
@@ -1508,7 +1514,7 @@ if isequal(tag,'radiobutton_euclid')
         if overlap; break; end
     end
 else
-    [A_all,b_all,params]=prob_spec(tag,t_i,file_id,handles,check_volume);
+    [A_all,b_all,params]=prob_spec(tag,t_i,file_id,hdata,check_volume);
     if isempty(A_all)
         return;
     end
@@ -1535,7 +1541,7 @@ else
         end
     end
     %overlap
-    n=size(handles.gambles.pairs,1);
+    n=size(hdata.gambles.pairs,1);
     for i=1:length(A_all)
         if isempty(A_all{i}); continue; end
         for j=(i+1):length(A_all)
@@ -1555,12 +1561,12 @@ else
     end
 end
 
-function [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,tag,file_id,set_idx,handles,check_volume,multicore)
+function [res,msg,new_portahull,user_cancel]=run_bayes_gibbs_test(t_i,tag,file_id,set_idx,hdata,check_volume,multicore,selected_method)
 %performs bayes factor (bayes_gibbs) test on theory t_i and
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
 res=[]; msg=[]; new_portahull=[]; user_cancel=0;
 if ~isequal(tag,'radiobutton_from_file')
-    n_vert=length(handles.theories{t_i}.vertices);
+    n_vert=length(hdata.theories{t_i}.vertices);
     if n_vert==0
         msg='Need at least 1 vertex defined';
         return;
@@ -1571,7 +1577,7 @@ if isequal(tag,'radiobutton_euclid')
     msg='Bayesian test for the Euclidean distance specification currently not supported';
     return;
 else
-    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,handles,check_volume);
+    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,hdata,check_volume);
     if isempty(A_all)
         msg='No valid vertex/probabilistic specification';
         return;
@@ -1589,9 +1595,9 @@ else
 
     res.type='bayes_factor';
     if isequal(tag,'radiobutton_from_file')
-        res.theory.name=handles.spec.from_files{file_id}.name;
+        res.theory.name=hdata.spec.from_files{file_id}.name;
     else
-        res.theory=handles.theories{t_i};
+        res.theory=hdata.theories{t_i};
     end
     switch tag
         case 'radiobutton_major'
@@ -1602,10 +1608,10 @@ else
             res.U=0;
         case 'radiobutton_sup'
             res.spec='sup';
-            res.U=handles.spec.U_sup;
+            res.U=hdata.spec.U_sup;
         case 'radiobutton_city'
             res.spec='city';
-            res.U=handles.spec.U_city;
+            res.U=hdata.spec.U_city;
         case 'radiobutton_from_file'
             res.spec='file';
             res.U=0;
@@ -1613,14 +1619,14 @@ else
             res.spec='mixture';
             res.U=0;
     end
-    res.lambda=handles.spec.lambda;
+    res.lambda=hdata.spec.lambda;
     res.use_ref=check_volume;
-    res.log_ref_vol=handles.spec.log_ref_vol;
+    res.log_ref_vol=hdata.spec.log_ref_vol;
     if set_idx==0
-        res.M=handles.data.M;
+        res.M=hdata.data.M;
     else
-        res.M=handles.data.sets{set_idx}.M;
-        res.sets_M=handles.data.sets{set_idx};
+        res.M=hdata.data.sets{set_idx}.M;
+        res.sets_M=hdata.data.sets{set_idx};
     end
     if size(res.M,2)>1  %matrix version
         res_M=cell2mat(res.M');
@@ -1639,13 +1645,13 @@ else
         res.ineq_idx=ineq_idx;
     end
     res.params=params;
-    res.N=handles.spec.N;
-    res.rstate=handles.spec.rstate;
-    res.gibbs_size=handles.spec.gibbs_size;
-    res.gibbs_burn=handles.spec.gibbs_burn;
+    res.N=hdata.spec.N;
+    res.rstate=hdata.spec.rstate;
+    res.gibbs_size=hdata.spec.gibbs_size;
+    res.gibbs_burn=hdata.spec.gibbs_burn;
     res.res=cell(length(A_all),1);
     %hypercube boundary
-    n=size(handles.gambles.pairs,1);
+    n=size(hdata.gambles.pairs,1);
     cube_A=[eye(n); -eye(n)];
     cube_B=[ones(n,1); zeros(n,1)];
     n_vertices=0;
@@ -1683,11 +1689,10 @@ else
             else
                 progress_txt=['Computing Bayes Factor',vertex_txt];
             end
-            selected_method = get(handles.popupmenu_bayes_method, 'Value');
             switch selected_method
                 case 2
                     bayes_dat = bayes_factor_draw_and_test(res_M, [cube_A; A_all{i}], [cube_B; b_all{i}], ...
-                        handles.spec.gibbs_size, handles.spec.rstate);
+                        hdata.spec.gibbs_size, hdata.spec.rstate);
                     res.res{i}.bayes_dat=bayes_dat;
 
                     if isempty(res.res{i}.bayes_dat)
@@ -1697,7 +1702,7 @@ else
                     end
                 otherwise
                     [bayes_gibbs, bayes_gibbs_ext] = bayes_factor_gibbs(res_M, [cube_A; A_all{i}], [cube_B; b_all{i}], ...
-                        Aeq, Beq, ineq_idx, handles.spec.gibbs_size, handles.spec.rstate, ...
+                        Aeq, Beq, ineq_idx, hdata.spec.gibbs_size, hdata.spec.rstate, ...
                         0, progress_txt);
                     user_cancel=bayes_gibbs_ext(end,3);
                     if bayes_gibbs_ext(end,1)<res.gibbs_size
@@ -1722,12 +1727,12 @@ else
 end
 
 
-function [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,tag,file_id,set_idx,handles,check_volume,multicore)
+function [res,msg,new_portahull,user_cancel]=run_bayes_p_test(t_i,tag,file_id,set_idx,hdata,check_volume,multicore)
 %performs bayesian test on theory t_i and
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
 res=[]; msg=[]; new_portahull=[]; user_cancel=0;
 if ~isequal(tag,'radiobutton_from_file')
-    n_vert=length(handles.theories{t_i}.vertices);
+    n_vert=length(hdata.theories{t_i}.vertices);
     if n_vert==0
         msg='Need at least 1 vertex defined';
         return;
@@ -1738,7 +1743,7 @@ if isequal(tag,'radiobutton_euclid')
     msg='Bayesian test for the Euclidean distance specification currently not supported';
     return;
 else
-    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,handles,check_volume);
+    [A_all,b_all,params,new_portahull,A_eq,b_eq,ineq_idx]=prob_spec(tag,t_i,file_id,hdata,check_volume);
     if isempty(A_all)
         msg='No valid vertex/probabilistic specification';
         return;
@@ -1756,9 +1761,9 @@ else
 
     res.type='bayes_p';
     if isequal(tag,'radiobutton_from_file')
-        res.theory.name=handles.spec.from_files{file_id}.name;
+        res.theory.name=hdata.spec.from_files{file_id}.name;
     else
-        res.theory=handles.theories{t_i};
+        res.theory=hdata.theories{t_i};
     end
     switch tag
         case 'radiobutton_major'
@@ -1769,10 +1774,10 @@ else
             res.U=0;
         case 'radiobutton_sup'
             res.spec='sup';
-            res.U=handles.spec.U_sup;
+            res.U=hdata.spec.U_sup;
         case 'radiobutton_city'
             res.spec='city';
-            res.U=handles.spec.U_city;
+            res.U=hdata.spec.U_city;
         case 'radiobutton_from_file'
             res.spec='file';
             res.U=0;
@@ -1780,14 +1785,14 @@ else
             res.spec='mixture';
             res.U=0;
     end
-    res.lambda=handles.spec.lambda;
+    res.lambda=hdata.spec.lambda;
     res.use_ref=check_volume;
-    res.log_ref_vol=handles.spec.log_ref_vol;
+    res.log_ref_vol=hdata.spec.log_ref_vol;
     if set_idx==0
-        res.M=handles.data.M;
+        res.M=hdata.data.M;
     else
-        res.M=handles.data.sets{set_idx}.M;
-        res.sets_M=handles.data.sets{set_idx};
+        res.M=hdata.data.sets{set_idx}.M;
+        res.sets_M=hdata.data.sets{set_idx};
     end
     if size(res.M,2)>1  %matrix version
         res_M=cell2mat(res.M');
@@ -1806,13 +1811,13 @@ else
         res.ineq_idx=ineq_idx;
     end
     res.params=params;
-    res.N=handles.spec.N;
-    res.rstate=handles.spec.rstate;
-    res.gibbs_size=handles.spec.gibbs_size;
-    res.gibbs_burn=handles.spec.gibbs_burn;
+    res.N=hdata.spec.N;
+    res.rstate=hdata.spec.rstate;
+    res.gibbs_size=hdata.spec.gibbs_size;
+    res.gibbs_burn=hdata.spec.gibbs_burn;
     res.res=cell(length(A_all),1);
     %hypercube boundary
-    n=size(handles.gambles.pairs,1);
+    n=size(hdata.gambles.pairs,1);
     cube_A=[eye(n); -eye(n)];
     cube_B=[ones(n,1); zeros(n,1)];
     n_vertices=0;
@@ -1845,8 +1850,8 @@ else
             progress_txt=['Computing Bayes p & DIC',vertex_txt];
         end
         [p,D,pD_ext]=bayes_p_dic(res_M,[cube_A; A_all{i}],[cube_B; b_all{i}], ...
-            Aeq,Beq,ineq_idx,handles.spec.gibbs_size,handles.spec.gibbs_burn, ...
-            handles.spec.rstate,progress_txt);
+            Aeq,Beq,ineq_idx,hdata.spec.gibbs_size,hdata.spec.gibbs_burn, ...
+            hdata.spec.rstate,progress_txt);
         sample=[]; %samples no longer saved
         if isempty(p)
             res=[];
@@ -1932,12 +1937,12 @@ wres.D.DIC= wres.D.GOF + wres.D.complexity; %DIC
 
 
 
-function [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,tag,file_id,set_idx,handles,check_volume,multicore)
+function [res,msg,new_portahull,user_cancel]=run_hypo_test(t_i,tag,file_id,set_idx,hdata,check_volume,multicore)
 %performs a single hypothesis test on theory t_i and
 % probabilistic specification (of radiobutton handle h_btn -- now the tag)
 res=[]; msg=[]; new_portahull=[]; user_cancel=0;
 if ~isequal(tag,'radiobutton_from_file')
-    n_vert=length(handles.theories{t_i}.vertices);
+    n_vert=length(hdata.theories{t_i}.vertices);
     if n_vert==0
         msg='Need at least 1 vertex defined';
         return;
@@ -1945,10 +1950,10 @@ if ~isequal(tag,'radiobutton_from_file')
 end
 
 if isequal(tag,'radiobutton_euclid')
-    n=size(handles.gambles.pairs,1);
+    n=size(hdata.gambles.pairs,1);
     w_total=0;
     for v_i=1:n_vert
-        w_total=w_total+handles.theories{t_i}.vertices{v_i}.w;
+        w_total=w_total+hdata.theories{t_i}.vertices{v_i}.w;
     end
     if w_total==0 && check_volume>0
         msg='Total weight is zero';
@@ -1956,38 +1961,38 @@ if isequal(tag,'radiobutton_euclid')
     end
     
     res.type='frequentist';
-    res.theory=handles.theories{t_i};
+    res.theory=hdata.theories{t_i};
     res.spec='euclid';
-    res.lambda=handles.spec.lambda;
-    res.U=handles.spec.U_euc;
+    res.lambda=hdata.spec.lambda;
+    res.U=hdata.spec.U_euc;
     res.use_ref=check_volume;
-    res.log_ref_vol=handles.spec.log_ref_vol;
+    res.log_ref_vol=hdata.spec.log_ref_vol;
     if set_idx==0
-        res.M=handles.data.M;
+        res.M=hdata.data.M;
     else
-        res.M=handles.data.sets{set_idx}.M;
-        res.sets_M=handles.data.sets{set_idx};
+        res.M=hdata.data.sets{set_idx}.M;
+        res.sets_M=hdata.data.sets{set_idx};
     end
     res.A=[];
     res.b=[];
     res.params=zeros(n_vert,1);
-    res.N=handles.spec.N;
-    res.rstate=handles.spec.rstate;
+    res.N=hdata.spec.N;
+    res.rstate=hdata.spec.rstate;
     res.res=cell(n_vert,1);
     for i=1:n_vert
         if check_volume>0
-            rvol_i=handles.theories{t_i}.vertices{i}.w/w_total;
+            rvol_i=hdata.theories{t_i}.vertices{i}.w/w_total;
             if rvol_i==0; continue; end
-            vert=handles.theories{t_i}.vertices{i}.pairs(:,3)';
+            vert=hdata.theories{t_i}.vertices{i}.pairs(:,3)';
             if all((vert==0)|(vert==1))                
-                U=exp( (log(rvol_i)+handles.spec.log_ref_vol-n/2*log(pi)+...
+                U=exp( (log(rvol_i)+hdata.spec.log_ref_vol-n/2*log(pi)+...
                     gammaln(n/2+1)+n*log(2))/n );
             else
-                U=search_volume('radiobutton_euclid',vert,exp(log(rvol_i)+handles.spec.log_ref_vol));
+                U=search_volume('radiobutton_euclid',vert,exp(log(rvol_i)+hdata.spec.log_ref_vol));
             end
         else
-            %U=rvol_i^(1/n)*handles.spec.U_euc;
-            U=handles.spec.U_euc;
+            %U=rvol_i^(1/n)*hdata.spec.U_euc;
+            U=hdata.spec.U_euc;
         end
         if n_vert>1
             vertex_txt=sprintf(' (vertex %d/%d)',i,n_vert);
@@ -1995,14 +2000,14 @@ if isequal(tag,'radiobutton_euclid')
             vertex_txt='';
         end
         res.params(i)=U;
-        vert=handles.theories{t_i}.vertices{i}.pairs(:,3)';
+        vert=hdata.theories{t_i}.vertices{i}.pairs(:,3)';
         if multicore>0 
             progress_txt=[];
         else
             progress_txt=['Frequentist test',vertex_txt]; 
         end
-        [x,L,w,p,mc_msg,n_done]=mult_con_euclid(res.M,vert,U,handles.spec.N, ...
-            handles.spec.rstate,handles.options.opt_tol,handles.options.opt_iter, ...
+        [x,L,w,p,mc_msg,n_done]=mult_con_euclid(res.M,vert,U,hdata.spec.N, ...
+            hdata.spec.rstate,hdata.options.opt_tol,hdata.options.opt_iter, ...
             progress_txt);
         user_cancel=n_done(2); n_done=n_done(1);
         res.res{i}.x=x;
@@ -2013,7 +2018,7 @@ if isequal(tag,'radiobutton_euclid')
         res.res{i}.n_done=n_done;
     end
 else
-    [A_all,b_all,params,new_portahull,A_eq,b_eq]=prob_spec(tag,t_i,file_id,handles,check_volume);
+    [A_all,b_all,params,new_portahull,A_eq,b_eq]=prob_spec(tag,t_i,file_id,hdata,check_volume);
     if isempty(A_all)
         msg='No valid vertex/probabilistic specification';
         return;
@@ -2035,9 +2040,9 @@ else
 
     res.type='frequentist';
     if isequal(tag,'radiobutton_from_file')
-        res.theory.name=handles.spec.from_files{file_id}.name;
+        res.theory.name=hdata.spec.from_files{file_id}.name;
     else
-        res.theory=handles.theories{t_i};
+        res.theory=hdata.theories{t_i};
     end
     switch tag
         case 'radiobutton_major'
@@ -2048,10 +2053,10 @@ else
             res.U=0;
         case 'radiobutton_sup'
             res.spec='sup';
-            res.U=handles.spec.U_sup;
+            res.U=hdata.spec.U_sup;
         case 'radiobutton_city'
             res.spec='city';
-            res.U=handles.spec.U_city;
+            res.U=hdata.spec.U_city;
         case 'radiobutton_from_file'
             res.spec='file';
             res.U=0;
@@ -2059,20 +2064,20 @@ else
             res.spec='mixture';
             res.U=0;
     end
-    res.lambda=handles.spec.lambda;
+    res.lambda=hdata.spec.lambda;
     res.use_ref=check_volume;
-    res.log_ref_vol=handles.spec.log_ref_vol;
+    res.log_ref_vol=hdata.spec.log_ref_vol;
     if set_idx==0
-        res.M=handles.data.M;
+        res.M=hdata.data.M;
     else
-        res.M=handles.data.sets{set_idx}.M;
-        res.sets_M=handles.data.sets{set_idx};
+        res.M=hdata.data.sets{set_idx}.M;
+        res.sets_M=hdata.data.sets{set_idx};
     end
     res.A=A_all{i};
     res.b=b_all{i};
     res.params=params;
-    res.N=handles.spec.N;
-    res.rstate=handles.spec.rstate;
+    res.N=hdata.spec.N;
+    res.rstate=hdata.spec.rstate;
     res.res=cell(length(A_all),1);
     n_vertices=0;
     for i=1:length(A_all)
@@ -3907,7 +3912,7 @@ else
             subplot(2,1,2);
             plot(pD_ext(:,1),pD_ext(:,3),'*-');
             xlabel('Sample size'); ylabel('DIC'); grid on
-            set(h_plot,'NumberTitle','off','Name','Results (Bayes factor)');
+            set(h_plot,'NumberTitle','off','Name','Results (Bayes p & DIC)');
         end
     end
     if isfield(handles.results{r_idx},'weighted_res')
@@ -4306,7 +4311,7 @@ function pushbutton_results_export_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[file,path]=uiputfile({'*.mat','MAT-files (*.mat)'; '*.csv','Comma separated values (*.csv)'; ...
+[file,path]=uiputfile({'*.csv','Comma separated values (*.csv)'; '*.mat','MAT-files (*.mat)'; ...
     '*.txt','Text files (*.txt)';'*.*','All Files'},'Export Results As', handles.last_path);
 if file~=0, handles.last_path = path; guidata(hObject, handles); end
 if file~=0
@@ -4649,7 +4654,7 @@ function pushbutton_about_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton_about (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-msg='QTEST 2.2.4';
+msg='QTEST 2.2.5';
 msg=[msg,sprintf('\n \nProgrammed by Shiau Hong Lim\n \n'), ...
     sprintf('QTEST uses PORTA by Thomas Christof and Andreas Loebel.\n \n'), ...
     'This program was developed with support by the National', ...
