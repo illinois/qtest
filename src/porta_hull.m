@@ -84,7 +84,8 @@ if strcmp(method, 'porta') == 0
     [~, p] = rref(A);
 
     % Free variable indices are those not in pivot columns
-    IDX = setdiff(1:size(A, 2), p);
+    % IDX = setdiff(1:size(A, 2), p);
+    IDX = p;
 end
 
 disp("V to H conversion - done using method " + method)
